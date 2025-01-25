@@ -1,0 +1,10 @@
+{
+	"name": "too-many-modifiers",
+	"title": "Too Many Modifiers",
+	"description": "Allows you to add notes to tokens which show on the UI",
+	"version": "1.0.0",
+	"authors": ["Banter"],
+  	"esmodules": ["notes-display.js", "main.js"],
+	"minimumCoreVersion": "0.11.0",
+	"compatibleCoreVersion": "0.11.0"
+}
