@@ -27,29 +27,31 @@ export class NotesDisplay {
     }
     
     static onRenderTokenHUD(app, html) {
+        if (!game.user.isGM) {
+            return;
+        }
         const token = app.object;
-        const colLeft = $(html).find(".left")
+        const colRight = $(html).find(".right")
         const button = $(`
             <div class="control-icon" id="toggle-token-notes">
                 <img src="icons/svg/book.svg" width="36" height="36" title="Edit Notes">
             </div>
         `)
-        colLeft.append(button);
+        colRight.append(button);
         button.on("click", (e) => {
-            game.notesDisplay._editNotes(token);
+            game.notesDisplay._editNotes(token.document);
         })
     }
     
-    _editNotes(token) {
-        const notes = token.getFlag("too-many-modifiers", "notes") || "";
+    _editNotes(tokenDocument) {
+        console.log(tokenDocument);
+        const notes = tokenDocument.getFlag("too-many-modifiers", "notes") || "";
         
         new Dialog({
             title: "Edit Notes",
             content: `
         <form>
           <div style="width: 100%; max-width: 800px;">
-            <label for="bigTextArea">Please enter some text:</label>
-            <br>
             <textarea id="bigTextArea" style="width: 100%; height: 500px;" placeholder="Enter your multi-line text here">${notes}</textarea>
           </div>
         </form>
@@ -59,7 +61,7 @@ export class NotesDisplay {
                 label: "Save",
                 callback: (dialogHtml) => {
                     const inputValue = dialogHtml.find('#bigTextArea').val();
-                    token.setFlag("too-many-modifiers", "notes", inputValue);
+                    tokenDocument.setFlag("too-many-modifiers", "notes", inputValue);
                 }
             },
             cancel: {
