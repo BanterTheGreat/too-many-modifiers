@@ -71,28 +71,69 @@ export class NotesDisplay {
         save: {
           label: "Save",
           callback: async (dialogHtml) => {
-            const conditionValue = dialogHtml.find('#condition').val();
-            const textValue = dialogHtml.find('#noteText').val(); // Text
-            const durationValue = dialogHtml.find('#duration').val();
-            const durationOverwrite = dialogHtml.find('#durationOverwrite').val();
-            const ongoingType = dialogHtml.find('#ongoingType').val();
-            const ongoingDamage = dialogHtml.find('#ongoingDamage').val();
-
-            let finalCondition = conditionValue || textValue;
-            const isCondition = !!conditionValue;
-            const isOngoing = conditionValue === 'Ongoing';
-
-            // Append ongoing details to condition if applicable
-            if (isOngoing && ongoingType && ongoingDamage) {
-              finalCondition = `Ongoing ${ongoingDamage} ${ongoingType} damage`;
-            }
-
-            // Use overwrite if present, otherwise use dropdown value
-            const finalDuration = durationOverwrite || durationValue;
-
-            // Find combatantId if duration is an EoT option
+            const noteType = dialogHtml.find('#noteType').val();
+            
+            // The text we show.
+            let noteText = '';
+            // The duration of the note.
+            let finalDuration = '';
+            // The combatantId if applicable for EoT durations.
             let combatantId = null;
 
+            // Duration Exclusive
+            let isCondition = false;
+            let systemCondition = '';
+
+            let isOngoing = false;
+            let finalOngoingType = '';
+            let finalOngoingDamage = 0;
+
+            console.error(noteType);
+
+            switch (noteType) {
+              case 'ongoing':
+                const ongoingType = dialogHtml.find('#ongoingType').val();
+                const ongoingDamage = dialogHtml.find('#ongoingDamage').val();
+                const ongoingDuration = dialogHtml.find('#ongoingDuration').val();
+                const ongoingDurationOverwrite = dialogHtml.find('#ongoingDurationOverwrite').val();
+
+                if (!ongoingType || !ongoingDamage) return;
+
+                noteText = `Ongoing ${ongoingDamage} ${ongoingType}`;
+                finalDuration = ongoingDurationOverwrite || ongoingDuration;
+                finalOngoingType = ongoingType;
+                finalOngoingDamage = ongoingDamage;
+                isOngoing = true;
+                break;
+              case 'condition':
+                const conditionValue = dialogHtml.find('#condition').val();
+                const durationValue = dialogHtml.find('#duration').val();
+
+                if (!conditionValue || !durationValue) return;
+                
+                console.error(conditionValue);
+                console.error(durationValue);
+                noteText = conditionValue;
+                finalDuration = durationValue;
+                systemCondition = conditionValue;
+                isCondition = true;
+                break;
+              case 'modifier':
+                break;
+              case 'manual':
+                const manualCondition = dialogHtml.find('#manualCondition').val();
+                const manualDuration = dialogHtml.find('#manualDuration').val();
+
+                if (!manualCondition || !manualDuration) return;
+
+                noteText = manualCondition;
+                finalDuration = manualDuration;
+                break;
+              default:
+                return;
+            }
+
+            // Find combatantId if duration is an EoT option
             if (finalDuration?.startsWith("EoT ")) {
               const combatantName = finalDuration.replace("EoT ", "");
               const combatant = combat?.combatants.find(c => c.name === combatantName);
@@ -120,29 +161,29 @@ export class NotesDisplay {
             }
 
             // Add new note if text was entered
-            if (textValue.trim() || conditionValue) {
+            if (noteText.trim()) {
               const newNote = {
-                text: finalCondition,
+                text: noteText,
                 duration: finalDuration,
-                condition: conditionValue,
+                condition: systemCondition || null,
                 combatantId: combatantId,
                 round: combat?.round,
                 turn: combat?.turn,
-                ongoingType: isOngoing ? ongoingType : null,
-                ongoingDamage: isOngoing ? ongoingDamage : null,
+                ongoingType: isOngoing ? finalOngoingType : null,
+                ongoingDamage: isOngoing ? finalOngoingDamage : null,
               };
 
               updatedNotesArray.push(newNote);
 
               // Apply condition if selected (but not for Ongoing)
-              if (isCondition && !isOngoing && tokenDocument.actor) {
+              if (isCondition && tokenDocument.actor) {
                 const actor = tokenDocument.actor;
-                const conditionEffect = CONFIG.statusEffects.find(e => e.name === conditionValue);
+                const conditionEffect = CONFIG.statusEffects.find(e => e.name === systemCondition);
                 if (conditionEffect) {
                   await actor.createEmbeddedDocuments("ActiveEffect", [{
                     icon: conditionEffect.img,
                     name: conditionEffect.name,
-                    statuses: new Set([conditionValue]),
+                    statuses: new Set([conditionEffect.id]),
                     flags: {
                       dnd4e: {
                         effectData: {
@@ -168,20 +209,55 @@ export class NotesDisplay {
       },
       default: "save",
       render: (html) => {
-        // Show/hide ongoing fields based on condition selection
-        const conditionSelect = html.find('#condition');
-        const ongoingFields = html.find('#ongoingFields');
-        
-        conditionSelect.on('change', function() {
-          if ($(this).val() === 'Ongoing') {
-            ongoingFields.show();
-          } else {
-            ongoingFields.hide();
-          }
-        });
+        // Show/hide sections based on note type selection
+        const noteTypeSelect = html.find('#noteType');
+        const conditionSection = html.find('#conditionSection');
+        const ongoingSection = html.find('#ongoingSection');
+        const modifierSection = html.find('#modifierSection');
+        const manualSection = html.find('#manualSection');
+        const dialog = html.parents('.app');
 
-        // Hide by default
-        ongoingFields.hide();
+        // Set default to condition and show it
+        noteTypeSelect.val('condition');
+        conditionSection.show();
+
+        const resizeDialog = () => {
+          // Get the dialog application instance
+          const app = ui.windows[Object.keys(ui.windows).find(key => ui.windows[key].element?.get(0) === dialog.get(0))];
+
+          if (app) {
+            // Calculate height based on content
+            const contentHeight = html.find('.window-content').prop('scrollHeight');
+            // Add some padding for buttons and margins
+            const totalHeight = contentHeight + 60;
+
+            // Use setPosition to resize
+            app.setPosition({
+              height: totalHeight
+            });
+          }
+        };
+
+        noteTypeSelect.on('change', function () {
+          const selectedType = $(this).val();
+
+          conditionSection.hide();
+          ongoingSection.hide();
+          modifierSection.hide();
+          manualSection.hide();
+
+          if (selectedType === 'condition') {
+            conditionSection.show();
+          } else if (selectedType === 'ongoing') {
+            ongoingSection.show();
+          } else if (selectedType === 'modifier') {
+            modifierSection.show();
+          } else if (selectedType === 'manual') {
+            manualSection.show();
+          }
+
+          resizeDialog();
+        });
       }
     }).render(true, { width: 400 });
   }
@@ -348,43 +424,81 @@ export class NotesDisplay {
         ${notesTableHtml}
         <h3>Add new note</h3>
         <div style="width: 100%; max-width: 400px;">
-          <div style="margin-bottom: 15px; display: flex; gap: 10px;">
-            <div style="width: 50%;">
-              <label>Condition:</label>
-              <select id="condition" style="width: 100%; padding: 5px;">
-                <option value="">Select condition...</option>
-                ${conditionOptionsWithOngoing}
-              </select>
-            </div>
-            <div style="width: 50%;">
-              <label>Duration:</label>
-              <select id="duration" style="width: 100%; padding: 5px;">
-                <option value="">Select duration...</option>
-                ${durationOptions}
-              </select>
+          <div style="margin-bottom: 15px;">
+            <label>Note Type:</label>
+            <select id="noteType" style="width: 100%; padding: 5px;">
+              <option value="">Select type...</option>
+              <option value="condition">Condition</option>
+              <option value="ongoing">Ongoing</option>
+              <option value="modifier">Modifier</option>
+              <option value="manual">Manual</option>
+            </select>
+          </div>
+
+          <div id="conditionSection" style="display: none;">
+            <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+              <div style="width: 50%;">
+                <label>Condition:</label>
+                <select id="condition" style="width: 100%; padding: 5px;">
+                  <option value="">Select condition...</option>
+                  ${conditionOptions}
+                </select>
+              </div>
+              <div style="width: 50%;">
+                <label>Duration:</label>
+                <select id="duration" style="width: 100%; padding: 5px;">
+                  <option value="">Select duration...</option>
+                  ${durationOptions}
+                </select>
+              </div>
             </div>
           </div>
-          <div style="margin-bottom: 15px; display: flex; gap: 10px;">
-            <div style="width: 50%;">
-              <label>Manual Condition:</label>
-              <input type="text" id="noteText" style="width: 100%; padding: 5px;" placeholder="Enter text">
+
+          <div id="ongoingSection" style="display: none;">
+            <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+              <div style="width: 50%;">
+                <label>Type:</label>
+                <select id="ongoingType" style="width: 100%; padding: 5px;">
+                  <option value="">Select type...</option>
+                  ${damageTypeOptions}
+                </select>
+              </div>
+              <div style="width: 50%;">
+                <label>Damage:</label>
+                <input type="number" id="ongoingDamage" style="width: 100%; padding: 5px;" placeholder="Enter damage amount">
+              </div>
             </div>
-            <div style="width: 50%;">
-              <label>Manual Duration:</label>
-              <input type="text" id="durationOverwrite" style="width: 100%; padding: 5px;" placeholder="Enter custom duration">
+            <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+              <div style="width: 50%;">
+                <label>Duration:</label>
+                <select id="ongoingDuration" style="width: 100%; padding: 5px;">
+                  <option value="">Select duration...</option>
+                  ${durationOptions}
+                </select>
+              </div>
+              <div style="width: 50%;">
+                <label>Duration Overwrite:</label>
+                <input type="text" id="ongoingDurationOverwrite" style="width: 100%; padding: 5px;" placeholder="Enter custom duration">
+              </div>
             </div>
           </div>
-          <div id="ongoingFields" style="margin-bottom: 15px; display: flex; gap: 10px;">
-            <div style="width: 50%;">
-              <label>Type:</label>
-              <select id="ongoingType" style="width: 100%; padding: 5px;">
-                <option value="">Select type...</option>
-                ${damageTypeOptions}
-              </select>
+
+          <div id="modifierSection" style="display: none;">
+            <div style="margin-bottom: 15px; padding: 10px; background-color: #f0f0f0; border-radius: 4px;">
+              <p>Modifier section placeholder</p>
             </div>
-            <div style="width: 50%;">
-              <label>Damage:</label>
-              <input type="number" id="ongoingDamage" style="width: 100%; padding: 5px;" placeholder="Enter damage amount">
+          </div>
+
+          <div id="manualSection" style="display: none;">
+            <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+              <div style="width: 50%;">
+                <label>Manual Condition:</label>
+                <input type="text" id="manualCondition" style="width: 100%; padding: 5px;" placeholder="Enter condition text">
+              </div>
+              <div style="width: 50%;">
+                <label>Manual Duration:</label>
+                <input type="text" id="manualDuration" style="width: 100%; padding: 5px;" placeholder="Enter duration">
+              </div>
             </div>
           </div>
         </div>
