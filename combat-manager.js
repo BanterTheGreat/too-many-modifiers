@@ -45,6 +45,7 @@ export class CombatManager {
 
     game.combatManager._rollSavingThrows(combat, previous);
     game.combatManager._removeEndOfTurnNotes(combat, previous);
+    game.combatManager._resolveOngoingDamage(combat, current);
   }
 
   _rollSavingThrows(combat, previous) {
@@ -87,6 +88,33 @@ export class CombatManager {
       }
     });
   }
+
+  _resolveOngoingDamage(combat, current) {
+    const currentCombatantId = current.combatantId;
+    const currentCombatant = combat.combatants.find(c => c.id === currentCombatantId);
+    const token = currentCombatant?.token;
+
+    if (!token) return;
+
+    let notesArray = token.getFlag("too-many-modifiers", "notes") || [];
+
+    if (!Array.isArray(notesArray)) return;
+
+    // Find notes with "Ongoing" condition
+    const ongoingNotes = notesArray.filter(note => !!note?.ongoingType && !!note?.ongoingDamage);
+    ongoingNotes.forEach(async note => {
+      const damageRoll = new Roll(`${note.ongoingDamage}[${note.ongoingType}]`);
+      const damageResult = await damageRoll.evaluate();
+      const damageTotal = damageResult.total;
+
+      const flavorText = `<p><strong>${token.name}</strong> takes <strong>${damageTotal}</strong> ongoing ${note.ongoingType} damage</p>`;
+
+      await damageResult.toMessage({
+        flavor: flavorText
+      });
+    });
+  }
+
 
   _removeEndOfTurnNotes(combat, previous) {
     const previousRound = previous.round;

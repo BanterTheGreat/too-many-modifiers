@@ -75,9 +75,17 @@ export class NotesDisplay {
             const textValue = dialogHtml.find('#noteText').val(); // Text
             const durationValue = dialogHtml.find('#duration').val();
             const durationOverwrite = dialogHtml.find('#durationOverwrite').val();
+            const ongoingType = dialogHtml.find('#ongoingType').val();
+            const ongoingDamage = dialogHtml.find('#ongoingDamage').val();
 
-            const finalCondition = conditionValue || textValue;
+            let finalCondition = conditionValue || textValue;
             const isCondition = !!conditionValue;
+            const isOngoing = conditionValue === 'Ongoing';
+
+            // Append ongoing details to condition if applicable
+            if (isOngoing && ongoingType && ongoingDamage) {
+              finalCondition = `Ongoing ${ongoingDamage} ${ongoingType} damage`;
+            }
 
             // Use overwrite if present, otherwise use dropdown value
             const finalDuration = durationOverwrite || durationValue;
@@ -119,20 +127,22 @@ export class NotesDisplay {
                 condition: conditionValue,
                 combatantId: combatantId,
                 round: combat?.round,
-                turn: combat?.turn
+                turn: combat?.turn,
+                ongoingType: isOngoing ? ongoingType : null,
+                ongoingDamage: isOngoing ? ongoingDamage : null,
               };
 
               updatedNotesArray.push(newNote);
 
-              // Apply condition if selected
-              if (isCondition && tokenDocument.actor) {
+              // Apply condition if selected (but not for Ongoing)
+              if (isCondition && !isOngoing && tokenDocument.actor) {
                 const actor = tokenDocument.actor;
-                const conditionEffect = CONFIG.statusEffects.find(e => e.name === finalCondition);
+                const conditionEffect = CONFIG.statusEffects.find(e => e.name === conditionValue);
                 if (conditionEffect) {
                   await actor.createEmbeddedDocuments("ActiveEffect", [{
                     icon: conditionEffect.img,
                     name: conditionEffect.name,
-                    statuses: new Set([conditionEffect.id]),
+                    statuses: new Set([conditionValue]),
                     flags: {
                       dnd4e: {
                         effectData: {
@@ -157,6 +167,22 @@ export class NotesDisplay {
         }
       },
       default: "save",
+      render: (html) => {
+        // Show/hide ongoing fields based on condition selection
+        const conditionSelect = html.find('#condition');
+        const ongoingFields = html.find('#ongoingFields');
+        
+        conditionSelect.on('change', function() {
+          if ($(this).val() === 'Ongoing') {
+            ongoingFields.show();
+          } else {
+            ongoingFields.hide();
+          }
+        });
+
+        // Hide by default
+        ongoingFields.hide();
+      }
     }).render(true, { width: 400 });
   }
 
@@ -272,6 +298,18 @@ export class NotesDisplay {
       return `<option value="${value}">${label}</option>`;
     }).join('');
 
+    // Add Ongoing option
+    const conditionOptionsWithOngoing = `
+      ${conditionOptions}
+      <option value="Ongoing">Ongoing Damage</option>
+    `;
+
+    // Generate damage type options
+    const damageTypes = CONFIG.DND4E?.damageTypes || {};
+    const damageTypeOptions = Object.entries(damageTypes).map(([key, label]) => {
+      return `<option value="${key}">${label}</option>`;
+    }).join('');
+
     // Generate table rows for existing notes
     const notesTableRows = notesArray.map((note, index) => `
           <tr>
@@ -315,15 +353,9 @@ export class NotesDisplay {
               <label>Condition:</label>
               <select id="condition" style="width: 100%; padding: 5px;">
                 <option value="">Select condition...</option>
-                ${conditionOptions}
+                ${conditionOptionsWithOngoing}
               </select>
             </div>
-            <div style="width: 50%;">
-              <label>Manual Overwrite:</label>
-              <input type="text" id="noteText" style="width: 100%; padding: 5px;" placeholder="Enter text">
-            </div>
-          </div>
-          <div style="margin-bottom: 15px; display: flex; gap: 10px;">
             <div style="width: 50%;">
               <label>Duration:</label>
               <select id="duration" style="width: 100%; padding: 5px;">
@@ -331,9 +363,28 @@ export class NotesDisplay {
                 ${durationOptions}
               </select>
             </div>
+          </div>
+          <div style="margin-bottom: 15px; display: flex; gap: 10px;">
             <div style="width: 50%;">
-              <label>Manual Overwrite:</label>
+              <label>Manual Condition:</label>
+              <input type="text" id="noteText" style="width: 100%; padding: 5px;" placeholder="Enter text">
+            </div>
+            <div style="width: 50%;">
+              <label>Manual Duration:</label>
               <input type="text" id="durationOverwrite" style="width: 100%; padding: 5px;" placeholder="Enter custom duration">
+            </div>
+          </div>
+          <div id="ongoingFields" style="margin-bottom: 15px; display: flex; gap: 10px;">
+            <div style="width: 50%;">
+              <label>Type:</label>
+              <select id="ongoingType" style="width: 100%; padding: 5px;">
+                <option value="">Select type...</option>
+                ${damageTypeOptions}
+              </select>
+            </div>
+            <div style="width: 50%;">
+              <label>Damage:</label>
+              <input type="number" id="ongoingDamage" style="width: 100%; padding: 5px;" placeholder="Enter damage amount">
             </div>
           </div>
         </div>
