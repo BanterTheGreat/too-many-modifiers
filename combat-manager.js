@@ -71,7 +71,7 @@ export class CombatManager {
       const success = rollTotal >= 10;
 
       const flavorText = `<p><strong>${token.name}</strong> makes a saving throw against: <strong>${note.text}</strong></p>
-        <p>Result: ${success ? '<span style="color: green;"><strong>Success!</strong> The note has been removed.</span>' : '<span style="color: red;"><strong>Failed</strong></span>'}</p>`;
+        <p>Result: ${success ? '<span style="color: green;"><strong>Success!</strong></span>' : '<span style="color: red;"><strong>Failed</strong></span>'}</p>`;
 
       await rollResult.toMessage({
         flavor: flavorText
@@ -159,7 +159,7 @@ export class CombatManager {
     if (!token?.actor) return;
 
     const actor = token.actor;
-    const effect = actor.effects.find(e => e.statuses?.has(conditionName) || e.name === conditionName);
+    const effect = actor.effects.find(e => e.name === conditionName);
 
     if (effect) {
       effect.delete();
