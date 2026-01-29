@@ -44,82 +44,25 @@ export class NotesDisplay {
   }
 
   _editNotes(tokenDocument) {
-    console.log(tokenDocument);
-
     // Get the combat the token is in
     const combat = game.combats.find(c => c.combatants.some(combatant => combatant.actor?.id === tokenDocument.actor?.id));
     const combatantNames = combat?.combatants.map(c => c.name);
-    console.log("Combat:", combat);
-    console.log("Combatant Names:", combatantNames);
+    // console.log("Combat:", combat);
+    // console.log("Combatant Names:", combatantNames);
 
     let notesArray = tokenDocument.getFlag("too-many-modifiers", "notes") || [];
+
     if (!Array.isArray(notesArray)) {
       ui.notifications.warn("Non-Array notes data found. Resetting notes.");
       notesArray = [];
     }
 
-    // Generate duration dropdown options from combatants
-    const durationOptions = `
-        <option value="Encounter">Encounter</option>
-        <option value="Round">Round</option>
-        ${combat?.combatants.map(c => `<option value="EonT ${c.name}">EonT ${c.name}</option>`).join('') || ''}`;
-
-    // Generate table rows for existing notes
-    const notesTableRows = notesArray.map((note, index) => `
-          <tr>
-            <td style="padding: 5px; border: 1px solid #ccc; width: 30px;">
-              <input type="checkbox" id="note-${index}" style="cursor: pointer;">
-            </td>
-            <td style="padding: 5px; border: 1px solid #ccc;">${note.text}</td>
-            <td style="padding: 5px; border: 1px solid #ccc;">${note.duration}</td>
-          </tr>
-        `).join('');
-
-    const notesTableHtml = notesArray.length > 0 ? `
-          <div style="margin-bottom: 15px;">
-            <h3>Existing Notes</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <thead>
-                <tr>
-                  <th style="padding: 5px; border: 1px solid #ccc; text-align: left; width: 30px;">Delete?</th>
-                  <th style="padding: 5px; border: 1px solid #ccc; text-align: left;">Text</th>
-                  <th style="padding: 5px; border: 1px solid #ccc; text-align: left;">Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${notesTableRows}
-              </tbody>
-            </table>
-          </div>
-        ` : '';
+    // Generate HTML elements
+    const dialogContent = this._generateNotesDialogHtml(combat, notesArray);
 
     new Dialog({
       title: "Edit Notes",
-      content: `
-        <form>
-                ${notesTableHtml}
-
-          <div style="width: 100%; max-width: 400px;">
-            <div style="margin-bottom: 15px;">
-              <label>Text:</label>
-              <input type="text" id="noteText" style="width: 100%; padding: 5px;" placeholder="Enter text">
-            </div>
-            <div style="margin-bottom: 15px; display: flex; gap: 10px;">
-              <div style="width: 50%;">
-                <label>Duration:</label>
-                <select id="duration" style="width: 100%; padding: 5px;">
-                  <option value="">Select duration...</option>
-                  ${durationOptions}
-                </select>
-              </div>
-              <div style="width: 50%;">
-                <label>Duration Overwrite:</label>
-                <input type="text" id="durationOverwrite" style="width: 100%; padding: 5px;" placeholder="Enter custom duration">
-              </div>
-            </div>
-          </div>
-        </form>
-      `,
+      content: dialogContent,
       buttons: {
         save: {
           label: "Save",
@@ -139,13 +82,6 @@ export class NotesDisplay {
               const combatant = combat?.combatants.find(c => c.name === combatantName);
               combatantId = combatant?.id;
             }
-
-            // Create note object
-            const noteObject = {
-              text: textValue,
-              duration: finalDuration,
-              combatantId: combatantId
-            };
 
             // Get existing notes array or create new one
             const existingNotes = tokenDocument.getFlag("too-many-modifiers", "notes") || [];
@@ -169,7 +105,14 @@ export class NotesDisplay {
 
             // Add new note if text was entered
             if (textValue.trim()) {
-              updatedNotesArray.push(noteObject);
+              const newNote = {
+                text: textValue,
+                duration: finalDuration,
+                combatantId: combatantId,
+                round: combat?.round
+              };
+
+              updatedNotesArray.push(newNote);
             }
 
             // Set the flag with the array
@@ -183,7 +126,7 @@ export class NotesDisplay {
         }
       },
       default: "save",
-    }).render(true, { width: 400, height: 600 });
+    }).render(true, { width: 400 });
   }
 
   get gridScale() {
@@ -263,5 +206,70 @@ export class NotesDisplay {
 
     var lineCount = desc.split("\n").length - 1;
     token.notesDisplay.position.set(width / 2, x + y + (lineCount * ((this.fontSize * this.gridScale) + padding)) + (hovering ? 24 : 0));
+  }
+
+  _generateNotesDialogHtml(combat, notesArray) {
+    // Generate duration dropdown options from combatants
+    const durationOptions = `
+        <option value="Encounter">Encounter</option>
+        <option value="Round">Round</option>
+        ${combat?.combatants.map(c => `<option value="EonT ${c.name}">EonT ${c.name}</option>`).join('') || ''}`;
+
+    // Generate table rows for existing notes
+    const notesTableRows = notesArray.map((note, index) => `
+          <tr>
+            <td style="padding: 5px; border: 1px solid #ccc; width: 30px;">
+              <input type="checkbox" id="note-${index}" style="cursor: pointer;">
+            </td>
+            <td style="padding: 5px; border: 1px solid #ccc;">${note.text}</td>
+            <td style="padding: 5px; border: 1px solid #ccc;">${note.duration}</td>
+            <td style="padding: 5px; border: 1px solid #ccc;">${note.round ?? '-'}</td>
+          </tr>
+        `).join('');
+
+    const notesTableHtml = notesArray.length > 0 ? `
+          <div style="margin-bottom: 15px;">
+            <h3>Existing notes</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr>
+                  <th style="padding: 5px; border: 1px solid #ccc; text-align: left; width: 30px;">Delete?</th>
+                  <th style="padding: 5px; border: 1px solid #ccc; text-align: left;">Text</th>
+                  <th style="padding: 5px; border: 1px solid #ccc; text-align: left;">Duration</th>
+                  <th style="padding: 5px; border: 1px solid #ccc; text-align: left;">Round</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${notesTableRows}
+              </tbody>
+            </table>
+          </div>
+        ` : '';
+
+    return `
+      <form>
+        ${notesTableHtml}
+        <h3>Add new note</h3>
+        <div style="width: 100%; max-width: 400px;">
+          <div style="margin-bottom: 15px;">
+            <label>Text:</label>
+            <input type="text" id="noteText" style="width: 100%; padding: 5px;" placeholder="Enter text">
+          </div>
+          <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+            <div style="width: 50%;">
+              <label>Duration:</label>
+              <select id="duration" style="width: 100%; padding: 5px;">
+                <option value="">Select duration...</option>
+                ${durationOptions}
+              </select>
+            </div>
+            <div style="width: 50%;">
+              <label>Duration Overwrite:</label>
+              <input type="text" id="durationOverwrite" style="width: 100%; padding: 5px;" placeholder="Enter custom duration">
+            </div>
+          </div>
+        </div>
+      </form>
+    `;
   }
 }
