@@ -30,8 +30,9 @@ export class CombatManager {
         token.setFlag("too-many-modifiers", "notes", updatedNotesArray);
 
         // Remove corresponding active effects
-        removedNotes.forEach(note => {
+        removedNotes.forEach(async note => {
           game.combatManager._removeConditionEffect(token, note.text);
+          await game.combatManager._removeModifierBonus(token, note);
         });
 
         // Create chat message with removed notes
@@ -83,8 +84,8 @@ export class CombatManager {
         const updatedNotesArray = notesArray.filter(n => n !== note);
         token.setFlag("too-many-modifiers", "notes", updatedNotesArray);
         game.combatManager._removeConditionEffect(token, note.text);
+        await game.combatManager._removeModifierBonus(token, note);
         game.combatManager._createRemovedNotesMessage(token.name, [note]);
-
       }
     });
   }
@@ -114,7 +115,6 @@ export class CombatManager {
       });
     });
   }
-
 
   _removeEndOfTurnNotes(combat, previous) {
     const previousRound = previous.round;
@@ -159,8 +159,9 @@ export class CombatManager {
         token.setFlag("too-many-modifiers", "notes", updatedNotesArray);
 
         // Remove corresponding active effects
-        removedNotes.forEach(note => {
+        removedNotes.forEach(async note => {
           game.combatManager._removeConditionEffect(token, note.text);
+          await game.combatManager._removeModifierBonus(token, note);
         });
 
         // Create chat message with removed notes
@@ -191,6 +192,51 @@ export class CombatManager {
 
     if (effect) {
       effect.delete();
+    }
+  }
+
+  async _removeModifierBonus(token, note) {
+    if (!token?.actor) return;
+
+    const actor = token.actor;
+    const modifierType = note.modifierType;
+    const bonusName = `too-many-modifiers: ${note.text}`;
+
+    console.log(note);
+    console.log(modifierType);
+
+    switch (modifierType) {
+      case 'AC':
+        const acBonus = actor.system.defences.ac.bonus || [];
+        const updatedAcBonus = acBonus.filter(b => b.name !== bonusName);
+
+        console.log(acBonus);
+        console.log(updatedAcBonus);
+        await actor.update({ 'system.defences.ac.bonus': updatedAcBonus });
+        break;
+      case 'Speed':
+        const speedBonus = actor.system.movement.base.bonus || [];
+        const updatedSpeedBonus = speedBonus.filter(b => b.name !== bonusName);
+        await actor.update({ 'system.movement.base.bonus': updatedSpeedBonus });
+        break;
+      case 'Damage':
+        const damageBonus = actor.system.modifiers.damage.bonus || [];
+        const updatedDamageBonus = damageBonus.filter(b => b.name !== bonusName);
+        await actor.update({ 'system.modifiers.damage.bonus': updatedDamageBonus });
+        break;
+      case 'Saving Throws':
+        const saveBonus = actor.system.details.saves.bonus || [];
+        const updatedSaveBonus = saveBonus.filter(b => b.name !== bonusName);
+        await actor.update({ 'system.details.saves.bonus': updatedSaveBonus });
+        break;
+      case 'Attacks':
+        const attackBonus = actor.system.modifiers.attack.bonus || [];
+        const updatedAttackBonus = attackBonus.filter(b => b.name !== bonusName);
+        await actor.update({ 'system.modifiers.attack.bonus': updatedAttackBonus });
+        break;
+      default:
+        ui.notifications.warn(`Modifier type "${modifierType}" is not supported yet.`);
+        break;
     }
   }
 }

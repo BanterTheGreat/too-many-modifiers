@@ -101,7 +101,7 @@ export class NotesDisplay {
                 const ongoingDuration = dialogHtml.find('#ongoingDuration').val();
                 const ongoingDurationOverwrite = dialogHtml.find('#ongoingDurationOverwrite').val();
 
-                if (!ongoingType || !ongoingDamage) return;
+                if (!ongoingType || !ongoingDamage) break;
 
                 noteText = `Ongoing ${ongoingDamage} ${ongoingType}`;
                 finalDuration = ongoingDurationOverwrite || ongoingDuration;
@@ -113,7 +113,7 @@ export class NotesDisplay {
                 const conditionValue = dialogHtml.find('#condition').val();
                 const durationValue = dialogHtml.find('#duration').val();
 
-                if (!conditionValue || !durationValue) return;
+                if (!conditionValue || !durationValue) break;
 
                 noteText = conditionValue;
                 finalDuration = durationValue;
@@ -126,7 +126,7 @@ export class NotesDisplay {
                 const modifierDuration = dialogHtml.find('#modifierDuration').val();
                 const modifierDurationOverwrite = dialogHtml.find('#modifierDurationOverwrite').val();
 
-                if (!modifierType || !modifierValue) return;
+                if (!modifierType || !modifierValue) break;
 
                 noteText = `${modifierValue > 0 ? '+' : ''}${modifierValue} ${modifierType}`;
                 finalDuration = modifierDurationOverwrite || modifierDuration;
@@ -138,12 +138,13 @@ export class NotesDisplay {
                 const manualCondition = dialogHtml.find('#manualCondition').val();
                 const manualDuration = dialogHtml.find('#manualDuration').val();
 
-                if (!manualCondition || !manualDuration) return;
+                if (!manualCondition || !manualDuration) break;
 
                 noteText = manualCondition;
                 finalDuration = manualDuration;
                 break;
               default:
+                ui.notifications.warn("Please select a valid note type.");
                 return;
             }
 
