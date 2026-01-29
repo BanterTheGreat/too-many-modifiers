@@ -39,11 +39,13 @@ export class NotesDisplay {
         `)
     colRight.append(button);
     button.on("click", (e) => {
-      game.notesDisplay._editNotes(token.document);
+      game.notesDisplay._editNotes(token);
     })
   }
 
-  _editNotes(tokenDocument) {
+  _editNotes(token) {
+    var tokenDocument = token.document;
+
     // Get the combat the token is in
     const combat = game.combats.find(c => c.combatants.some(combatant => combatant.actor?.id === tokenDocument.actor?.id));
     const combatantNames = combat?.combatants.map(c => c.name);
@@ -66,7 +68,7 @@ export class NotesDisplay {
       buttons: {
         save: {
           label: "Save",
-          callback: (dialogHtml) => {
+          callback: async (dialogHtml) => {
             const textValue = dialogHtml.find('#noteText').val();
             const durationValue = dialogHtml.find('#duration').val();
             const durationOverwrite = dialogHtml.find('#durationOverwrite').val();
@@ -74,11 +76,11 @@ export class NotesDisplay {
             // Use overwrite if present, otherwise use dropdown value
             const finalDuration = durationOverwrite || durationValue;
 
-            // Find combatantId if duration is an EonT option
+            // Find combatantId if duration is an EoT option
             let combatantId = null;
 
-            if (finalDuration?.startsWith("EonT ")) {
-              const combatantName = finalDuration.replace("EonT ", "");
+            if (finalDuration?.startsWith("EoT ")) {
+              const combatantName = finalDuration.replace("EoT ", "");
               const combatant = combat?.combatants.find(c => c.name === combatantName);
               combatantId = combatant?.id;
             }
@@ -109,14 +111,15 @@ export class NotesDisplay {
                 text: textValue,
                 duration: finalDuration,
                 combatantId: combatantId,
-                round: combat?.round
+                round: combat?.round,
+                turn: combat?.turn
               };
 
               updatedNotesArray.push(newNote);
             }
 
             // Set the flag with the array
-            tokenDocument.setFlag("too-many-modifiers", "notes", updatedNotesArray);
+            await tokenDocument.setFlag("too-many-modifiers", "notes", updatedNotesArray);
           }
         },
         cancel: {
@@ -146,7 +149,7 @@ export class NotesDisplay {
     try {
       // We hide the note while hovering over a token.
       const { desc, color, stroke } = {
-        desc: "DISABLED!", // token?.document.flags["too-many-modifiers"]?.notes ?? "", 
+        desc: this._formatNotesForDisplay(token?.document.flags["too-many-modifiers"]?.notes ?? []),
         color: "#ffffff",
         stroke: "#000000"
       };
@@ -208,12 +211,29 @@ export class NotesDisplay {
     token.notesDisplay.position.set(width / 2, x + y + (lineCount * ((this.fontSize * this.gridScale) + padding)) + (hovering ? 24 : 0));
   }
 
+  _formatNotesForDisplay(notes) {
+    if (!Array.isArray(notes)) {
+      return undefined;
+    }
+
+    // We got no notes, so this will result in us not rendering anything.
+    if (notes.length === 0) {
+      return "";
+    }
+
+    var resultArray = notes.map(note => {
+      return `${note.text} ◆ ${note.duration}`;
+    });
+
+    return resultArray.join("\n");
+  }
+
   _generateNotesDialogHtml(combat, notesArray) {
     // Generate duration dropdown options from combatants
     const durationOptions = `
         <option value="Encounter">Encounter</option>
         <option value="Round">Round</option>
-        ${combat?.combatants.map(c => `<option value="EonT ${c.name}">EonT ${c.name}</option>`).join('') || ''}`;
+        ${combat?.combatants.map(c => `<option value="EoT ${c.name}">EoT ${c.name}</option>`).join('') || ''}`;
 
     // Generate table rows for existing notes
     const notesTableRows = notesArray.map((note, index) => `
@@ -224,6 +244,7 @@ export class NotesDisplay {
             <td style="padding: 5px; border: 1px solid #ccc;">${note.text}</td>
             <td style="padding: 5px; border: 1px solid #ccc;">${note.duration}</td>
             <td style="padding: 5px; border: 1px solid #ccc;">${note.round ?? '-'}</td>
+            <td style="padding: 5px; border: 1px solid #ccc;">${note.turn ?? '-'}</td>
           </tr>
         `).join('');
 
@@ -237,6 +258,7 @@ export class NotesDisplay {
                   <th style="padding: 5px; border: 1px solid #ccc; text-align: left;">Text</th>
                   <th style="padding: 5px; border: 1px solid #ccc; text-align: left;">Duration</th>
                   <th style="padding: 5px; border: 1px solid #ccc; text-align: left;">Round</th>
+                  <th style="padding: 5px; border: 1px solid #ccc; text-align: left;">Turn</th>
                 </tr>
               </thead>
               <tbody>
