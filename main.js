@@ -3,7 +3,7 @@ import {NotesDisplay} from "./notes-display.js";
 
 Hooks.on("setup", () => {
     game.notesDisplay = new NotesDisplay();
-    game.CombatManager = new CombatManager();
+    game.combatManager = new CombatManager();
 })
 
 Hooks.on("refreshToken", NotesDisplay.refreshToken);
