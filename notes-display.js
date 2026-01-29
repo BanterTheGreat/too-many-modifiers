@@ -94,6 +94,11 @@ export class NotesDisplay {
             let finalModifierType = '';
             let finalModifierValue = 0;
 
+            // Resistances Exclusive
+            let isResistances = false;
+            let finalResistanceType = '';
+            let finalResistanceValue = 0;
+
             switch (noteType) {
               case 'ongoing':
                 const ongoingType = dialogHtml.find('#ongoingType').val();
@@ -133,6 +138,20 @@ export class NotesDisplay {
                 finalModifierType = modifierType;
                 finalModifierValue = modifierValue;
                 isModifier = true;
+                break;
+              case 'resistances':
+                const resistanceType = dialogHtml.find('#resistanceType').val();
+                const resistanceValue = dialogHtml.find('#resistanceValue').val();
+                const resistanceDuration = dialogHtml.find('#resistanceDuration').val();
+                const resistanceDurationOverwrite = dialogHtml.find('#resistanceDurationOverwrite').val();
+
+                if (!resistanceType || !resistanceValue) break;
+
+                noteText = `${resistanceValue > 0 ? '+' : ''}${resistanceValue} ${resistanceType} Resistance`;
+                finalDuration = resistanceDurationOverwrite || resistanceDuration;
+                finalResistanceType = resistanceType;
+                finalResistanceValue = resistanceValue;
+                isResistances = true;
                 break;
               case 'manual':
                 const manualCondition = dialogHtml.find('#manualCondition').val();
@@ -188,6 +207,7 @@ export class NotesDisplay {
                 ongoingDamage: isOngoing ? finalOngoingDamage : null,
                 modifierType: isModifier ? finalModifierType : null,
                 modifierValue: isModifier ? finalModifierValue : null,
+                resistanceType: isResistances ? finalResistanceType : null,
               };
 
               updatedNotesArray.push(newNote);
@@ -255,6 +275,25 @@ export class NotesDisplay {
                     break;
                 }
               }
+
+              // Apply resistances if selected
+              if (isResistances && tokenDocument.actor) {
+                const actor = tokenDocument.actor;
+                const bonusName = `too-many-modifiers: ${noteText}`;
+                const bonus = {
+                  active: true,
+                  name: bonusName,
+                  note: noteText,
+                  value: finalResistanceValue,
+                };
+
+                const resistancePath = `system.resistances.${finalResistanceType}.bonus`;
+                const resistanceBonus = getProperty(actor, resistancePath) || [];
+                resistanceBonus.push(bonus);
+                console.log(resistanceBonus);
+                console.log(resistancePath);
+                await actor.update({ [resistancePath]: resistanceBonus });
+              }
             }
 
             // Set the flag with the array
@@ -274,6 +313,7 @@ export class NotesDisplay {
         const conditionSection = html.find('#conditionSection');
         const ongoingSection = html.find('#ongoingSection');
         const modifierSection = html.find('#modifierSection');
+        const resistancesSection = html.find('#resistancesSection');
         const manualSection = html.find('#manualSection');
         const dialog = html.parents('.app');
 
@@ -304,6 +344,7 @@ export class NotesDisplay {
           conditionSection.hide();
           ongoingSection.hide();
           modifierSection.hide();
+          resistancesSection.hide();
           manualSection.hide();
 
           if (selectedType === 'condition') {
@@ -312,6 +353,8 @@ export class NotesDisplay {
             ongoingSection.show();
           } else if (selectedType === 'modifier') {
             modifierSection.show();
+          } else if (selectedType === 'resistances') {
+            resistancesSection.show();
           } else if (selectedType === 'manual') {
             manualSection.show();
           }
@@ -491,6 +534,7 @@ export class NotesDisplay {
               <option value="condition">Condition</option>
               <option value="ongoing">Ongoing</option>
               <option value="modifier">Modifier</option>
+              <option value="resistances">Resistances</option>
               <option value="manual">Manual</option>
             </select>
           </div>
@@ -572,6 +616,35 @@ export class NotesDisplay {
               <div style="width: 50%;">
                 <label>Duration Overwrite:</label>
                 <input type="text" id="modifierDurationOverwrite" style="width: 100%; padding: 5px;" placeholder="Enter custom duration">
+              </div>
+            </div>
+          </div>
+
+          <div id="resistancesSection" style="display: none;">
+            <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+              <div style="width: 50%;">
+                <label>Type:</label>
+                <select id="resistanceType" style="width: 100%; padding: 5px;">
+                  <option value="">Select type...</option>
+                  ${damageTypeOptions}
+                </select>
+              </div>
+              <div style="width: 50%;">
+                <label>Value:</label>
+                <input type="number" id="resistanceValue" style="width: 100%; padding: 5px;" placeholder="Enter value">
+              </div>
+            </div>
+            <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+              <div style="width: 50%;">
+                <label>Duration:</label>
+                <select id="resistanceDuration" style="width: 100%; padding: 5px;">
+                  <option value="">Select duration...</option>
+                  ${durationOptions}
+                </select>
+              </div>
+              <div style="width: 50%;">
+                <label>Duration Overwrite:</label>
+                <input type="text" id="resistanceDurationOverwrite" style="width: 100%; padding: 5px;" placeholder="Enter custom duration">
               </div>
             </div>
           </div>

@@ -33,6 +33,7 @@ export class CombatManager {
         removedNotes.forEach(async note => {
           game.combatManager._removeConditionEffect(token, note.text);
           await game.combatManager._removeModifierBonus(token, note);
+          await game.combatManager._removeResistanceBonus(token, note);
         });
 
         // Create chat message with removed notes
@@ -85,6 +86,7 @@ export class CombatManager {
         token.setFlag("too-many-modifiers", "notes", updatedNotesArray);
         game.combatManager._removeConditionEffect(token, note.text);
         await game.combatManager._removeModifierBonus(token, note);
+        await game.combatManager._removeResistanceBonus(token, note);
         game.combatManager._createRemovedNotesMessage(token.name, [note]);
       }
     });
@@ -162,6 +164,7 @@ export class CombatManager {
         removedNotes.forEach(async note => {
           game.combatManager._removeConditionEffect(token, note.text);
           await game.combatManager._removeModifierBonus(token, note);
+          await game.combatManager._removeResistanceBonus(token, note);
         });
 
         // Create chat message with removed notes
@@ -202,8 +205,7 @@ export class CombatManager {
     const modifierType = note.modifierType;
     const bonusName = `too-many-modifiers: ${note.text}`;
 
-    console.log(note);
-    console.log(modifierType);
+    if (!modifierType) return;
 
     switch (modifierType) {
       case 'AC':
@@ -238,5 +240,20 @@ export class CombatManager {
         ui.notifications.warn(`Modifier type "${modifierType}" is not supported yet.`);
         break;
     }
+  }
+
+  async _removeResistanceBonus(token, note) {
+    if (!token?.actor) return;
+
+    const actor = token.actor;
+    const resistanceType = note.resistanceType;
+    const bonusName = `too-many-modifiers: ${note.text}`;
+
+    if (!resistanceType) return;
+
+    const resistancePath = `system.resistances.${resistanceType}.bonus`;
+    const resistanceBonus = getProperty(actor, resistancePath) || [];
+    const updatedResistanceBonus = resistanceBonus.filter(b => b.name !== bonusName);
+    await actor.update({ [resistancePath]: updatedResistanceBonus });
   }
 }
