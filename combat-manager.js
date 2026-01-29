@@ -11,7 +11,6 @@ export class CombatManager {
       const token = combatant.token;
       if (!token) return;
 
-      console.log(token);
       let notesArray = token.getFlag("too-many-modifiers", "notes") || [];
 
       if (!Array.isArray(notesArray)) return;
@@ -30,8 +29,13 @@ export class CombatManager {
       if (updatedNotesArray.length !== notesArray.length) {
         token.setFlag("too-many-modifiers", "notes", updatedNotesArray);
 
+        // Remove corresponding active effects
+        removedNotes.forEach(note => {
+          game.combatManager._removeConditionEffect(token, note.text);
+        });
+
         // Create chat message with removed notes
-        game.combatManager._createRemovedNotesMessage(token.name, removedNotes, "Round ended");
+        game.combatManager._createRemovedNotesMessage(token.name, removedNotes);
       }
     });
   }
@@ -49,8 +53,6 @@ export class CombatManager {
     const token = previousCombatant?.token;
 
     if (!token) return;
-
-    console.log(token);
 
     let notesArray = token.getFlag("too-many-modifiers", "notes") || [];
 
@@ -79,6 +81,9 @@ export class CombatManager {
       if (success) {
         const updatedNotesArray = notesArray.filter(n => n !== note);
         token.setFlag("too-many-modifiers", "notes", updatedNotesArray);
+        game.combatManager._removeConditionEffect(token, note.text);
+        game.combatManager._createRemovedNotesMessage(token.name, [note]);
+
       }
     });
   }
@@ -125,17 +130,22 @@ export class CombatManager {
       if (updatedNotesArray.length !== notesArray.length) {
         token.setFlag("too-many-modifiers", "notes", updatedNotesArray);
 
+        // Remove corresponding active effects
+        removedNotes.forEach(note => {
+          game.combatManager._removeConditionEffect(token, note.text);
+        });
+
         // Create chat message with removed notes
-        game.combatManager._createRemovedNotesMessage(token.name, removedNotes, "End of turn");
+        game.combatManager._createRemovedNotesMessage(token.name, removedNotes);
       }
 
     });
   }
 
-  _createRemovedNotesMessage(tokenName, removedNotes, reason) {
+  _createRemovedNotesMessage(tokenName, removedNotes) {
     const notesList = removedNotes.map(note => `<li>${note.text} (${note.duration})</li>`).join('');
     const content = `
-        Removing notes from <strong>${tokenName}</strong><br>
+        Removing notes & conditions from <strong>${tokenName}</strong><br>
         <ul>${notesList}</ul>
     `;
 
@@ -143,5 +153,16 @@ export class CombatManager {
       content: content,
       type: CONST.CHAT_MESSAGE_TYPES.OTHER
     });
+  }
+
+  _removeConditionEffect(token, conditionName) {
+    if (!token?.actor) return;
+
+    const actor = token.actor;
+    const effect = actor.effects.find(e => e.statuses?.has(conditionName) || e.name === conditionName);
+
+    if (effect) {
+      effect.delete();
+    }
   }
 }

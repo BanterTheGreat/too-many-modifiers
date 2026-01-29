@@ -51,8 +51,8 @@ export class NotesDisplay {
     // Get the combat the token is in
     const combat = game.combats.find(c => c.combatants.some(combatant => combatant.actor?.id === tokenDocument.actor?.id));
     const combatantNames = combat?.combatants.map(c => c.name);
-    // console.log("Combat:", combat);
-    // console.log("Combatant Names:", combatantNames);
+    console.log(token);
+    console.log(tokenDocument);
 
     let notesArray = tokenDocument.getFlag("too-many-modifiers", "notes") || [];
 
@@ -71,9 +71,13 @@ export class NotesDisplay {
         save: {
           label: "Save",
           callback: async (dialogHtml) => {
-            const textValue = dialogHtml.find('#noteText').val();
+            const conditionValue = dialogHtml.find('#condition').val();
+            const textValue = dialogHtml.find('#noteText').val(); // Text
             const durationValue = dialogHtml.find('#duration').val();
             const durationOverwrite = dialogHtml.find('#durationOverwrite').val();
+
+            const finalCondition = conditionValue || textValue;
+            const isCondition = !!conditionValue;
 
             // Use overwrite if present, otherwise use dropdown value
             const finalDuration = durationOverwrite || durationValue;
@@ -108,16 +112,38 @@ export class NotesDisplay {
             }
 
             // Add new note if text was entered
-            if (textValue.trim()) {
+            if (textValue.trim() || conditionValue) {
               const newNote = {
-                text: textValue,
+                text: finalCondition,
                 duration: finalDuration,
+                condition: conditionValue,
                 combatantId: combatantId,
                 round: combat?.round,
                 turn: combat?.turn
               };
 
               updatedNotesArray.push(newNote);
+
+              // Apply condition if selected
+              if (isCondition && tokenDocument.actor) {
+                const actor = tokenDocument.actor;
+                const conditionEffect = CONFIG.statusEffects.find(e => e.name === finalCondition);
+                if (conditionEffect) {
+                  await actor.createEmbeddedDocuments("ActiveEffect", [{
+                    icon: conditionEffect.img,
+                    name: conditionEffect.name,
+                    statuses: new Set([conditionEffect.id]),
+                    flags: {
+                      dnd4e: {
+                        effectData: {
+                          // Neccessary to prevent a null reference in the dnd4e system.
+                          durationType: "custom",
+                        }
+                      }
+                    }
+                  }]);
+                }
+              }
             }
 
             // Set the flag with the array
@@ -238,6 +264,14 @@ export class NotesDisplay {
         <option value="${Constants.DURATION_SAVE}">${Constants.DURATION_SAVE}</option>
         ${combat?.combatants.map(c => `<option value="EoT ${c.name}">EoT ${c.name}</option>`).join('') || ''}`;
 
+    // Generate condition dropdown options
+    const conditions = CONFIG.statusEffects || [];
+    const conditionOptions = conditions.map(condition => {
+      const label = condition.label || condition.name || condition;
+      const value = condition.name || condition.id || label;
+      return `<option value="${value}">${label}</option>`;
+    }).join('');
+
     // Generate table rows for existing notes
     const notesTableRows = notesArray.map((note, index) => `
           <tr>
@@ -276,9 +310,18 @@ export class NotesDisplay {
         ${notesTableHtml}
         <h3>Add new note</h3>
         <div style="width: 100%; max-width: 400px;">
-          <div style="margin-bottom: 15px;">
-            <label>Text:</label>
-            <input type="text" id="noteText" style="width: 100%; padding: 5px;" placeholder="Enter text">
+          <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+            <div style="width: 50%;">
+              <label>Condition:</label>
+              <select id="condition" style="width: 100%; padding: 5px;">
+                <option value="">Select condition...</option>
+                ${conditionOptions}
+              </select>
+            </div>
+            <div style="width: 50%;">
+              <label>Manual Overwrite:</label>
+              <input type="text" id="noteText" style="width: 100%; padding: 5px;" placeholder="Enter text">
+            </div>
           </div>
           <div style="margin-bottom: 15px; display: flex; gap: 10px;">
             <div style="width: 50%;">
@@ -289,7 +332,7 @@ export class NotesDisplay {
               </select>
             </div>
             <div style="width: 50%;">
-              <label>Duration Overwrite:</label>
+              <label>Manual Overwrite:</label>
               <input type="text" id="durationOverwrite" style="width: 100%; padding: 5px;" placeholder="Enter custom duration">
             </div>
           </div>
