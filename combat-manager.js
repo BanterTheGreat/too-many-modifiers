@@ -1,7 +1,9 @@
+import { Constants } from "./constants.js";
+
 export class CombatManager {
   static onCombatRound(combat, roundObject) {
     if (!game.user.isGM) return;
-    
+
     const round = roundObject.round;
 
     // Loop through each combatant
@@ -17,7 +19,7 @@ export class CombatManager {
       // Find notes to remove
       const removedNotes = [];
       const updatedNotesArray = notesArray.filter(note => {
-        if (note.duration === "Round" && note.round !== undefined && note.round < round) {
+        if (note.duration === Constants.DURATION_ROUND && note.round !== undefined && note.round < round) {
           removedNotes.push(note);
           return false; // Remove this note
         }
@@ -36,7 +38,55 @@ export class CombatManager {
 
   static onCombatTurnChange(combat, previous, current) {
     if (!game.user.isGM) return;
-    
+
+    game.combatManager._rollSavingThrows(combat, previous);
+    game.combatManager._removeEndOfTurnNotes(combat, previous);
+  }
+
+  _rollSavingThrows(combat, previous) {
+    const previousCombatantId = previous.combatantId;
+    const previousCombatant = combat.combatants.find(c => c.id === previousCombatantId);
+    const token = previousCombatant?.token;
+
+    if (!token) return;
+
+    let notesArray = token.getFlag("too-many-modifiers", "notes") || [];
+
+    if (!Array.isArray(notesArray)) return;
+
+    // Find notes with "Save Ends" duration
+    const saveEndsNotes = notesArray.filter(note => note.duration === Constants.DURATION_SAVE);
+
+    // Create a chat message for each "Save Ends" note
+    saveEndsNotes.forEach(async note => {
+      const roll = new Roll("1d20");
+      const rollResult = await roll.evaluate();
+      const rollTotal = rollResult.total;
+      const success = rollTotal >= 10;
+
+      const content = `
+        <div style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+          <p><strong>${token.name}</strong> makes a saving throw against: <strong>${note.text}</strong></p>
+          <p>Roll Result: <strong>${rollTotal}</strong></p>
+          <p>Result: ${success ? '<span style="color: green;"><strong>Success!</strong></span>' : '<span style="color: red;"><strong>Failed</strong></span>'}</p>
+        </div>
+      `;
+
+      ChatMessage.create({
+        content: content,
+        type: CONST.CHAT_MESSAGE_TYPES.ROLL,
+        rolls: [rollResult]
+      });
+
+      // If successful, remove the note immediately
+      if (success) {
+        const updatedNotesArray = notesArray.filter(n => n !== note);
+        // token.setFlag("too-many-modifiers", "notes", updatedNotesArray);
+      }
+    });
+  }
+
+  _removeEndOfTurnNotes(combat, previous) {
     const previousRound = previous.round;
     const previousTurn = previous.turn;
     const previousCombatantId = previous.combatantId;
@@ -46,7 +96,6 @@ export class CombatManager {
       const token = combatant.token;
       if (!token) return;
 
-      console.log(token);
       let notesArray = token.getFlag("too-many-modifiers", "notes") || [];
 
       if (!Array.isArray(notesArray)) return;

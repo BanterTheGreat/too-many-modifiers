@@ -1,3 +1,5 @@
+import { Constants } from "./constants.js";
+
 export class NotesDisplay {
 
   static refreshToken(token, flags) {
@@ -231,8 +233,9 @@ export class NotesDisplay {
   _generateNotesDialogHtml(combat, notesArray) {
     // Generate duration dropdown options from combatants
     const durationOptions = `
-        <option value="Encounter">Encounter</option>
-        <option value="Round">Round</option>
+        <option value="${Constants.DURATION_ENCOUNTER}">${Constants.DURATION_ENCOUNTER}</option>
+        <option value="${Constants.DURATION_ROUND}">${Constants.DURATION_ROUND}</option>
+        <option value="${Constants.DURATION_SAVE}">${Constants.DURATION_SAVE}</option>
         ${combat?.combatants.map(c => `<option value="EoT ${c.name}">EoT ${c.name}</option>`).join('') || ''}`;
 
     // Generate table rows for existing notes
