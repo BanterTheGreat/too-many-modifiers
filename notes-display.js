@@ -72,7 +72,7 @@ export class NotesDisplay {
           label: "Save",
           callback: async (dialogHtml) => {
             const noteType = dialogHtml.find('#noteType').val();
-            
+
             // The text we show.
             let noteText = '';
             // The duration of the note.
@@ -84,11 +84,15 @@ export class NotesDisplay {
             let isCondition = false;
             let systemCondition = '';
 
+            // Ongoing Exclusive
             let isOngoing = false;
             let finalOngoingType = '';
             let finalOngoingDamage = 0;
 
-            console.error(noteType);
+            // Modifier Exclusive
+            let isModifier = false;
+            let finalModifierType = '';
+            let finalModifierValue = 0;
 
             switch (noteType) {
               case 'ongoing':
@@ -110,15 +114,25 @@ export class NotesDisplay {
                 const durationValue = dialogHtml.find('#duration').val();
 
                 if (!conditionValue || !durationValue) return;
-                
-                console.error(conditionValue);
-                console.error(durationValue);
+
                 noteText = conditionValue;
                 finalDuration = durationValue;
                 systemCondition = conditionValue;
                 isCondition = true;
                 break;
               case 'modifier':
+                const modifierType = dialogHtml.find('#modifierType').val();
+                const modifierValue = dialogHtml.find('#modifierValue').val();
+                const modifierDuration = dialogHtml.find('#modifierDuration').val();
+                const modifierDurationOverwrite = dialogHtml.find('#modifierDurationOverwrite').val();
+
+                if (!modifierType || !modifierValue) return;
+
+                noteText = `${modifierValue > 0 ? '+' : ''}${modifierValue} ${modifierType}`;
+                finalDuration = modifierDurationOverwrite || modifierDuration;
+                finalModifierType = modifierType;
+                finalModifierValue = modifierValue;
+                isModifier = true;
                 break;
               case 'manual':
                 const manualCondition = dialogHtml.find('#manualCondition').val();
@@ -171,11 +185,13 @@ export class NotesDisplay {
                 turn: combat?.turn,
                 ongoingType: isOngoing ? finalOngoingType : null,
                 ongoingDamage: isOngoing ? finalOngoingDamage : null,
+                modifierType: isModifier ? finalModifierType : null,
+                modifierValue: isModifier ? finalModifierValue : null,
               };
 
               updatedNotesArray.push(newNote);
 
-              // Apply condition if selected (but not for Ongoing)
+              // Apply condition if selected
               if (isCondition && tokenDocument.actor) {
                 const actor = tokenDocument.actor;
                 const conditionEffect = CONFIG.statusEffects.find(e => e.name === systemCondition);
@@ -193,6 +209,49 @@ export class NotesDisplay {
                       }
                     }
                   }]);
+                }
+              }
+
+              // Apply modifier if selected
+              if (isModifier && tokenDocument.actor) {
+                const actor = tokenDocument.actor;
+                const bonusName = `too-many-modifiers: ${noteText}`;
+                const bonus = {
+                  active: true,
+                  name: bonusName,
+                  note: noteText,
+                  value: finalModifierValue,
+                };
+
+                switch (finalModifierType) {
+                  case 'AC':
+                    const acBonus = actor.system.defences.ac.bonus || [];
+                    acBonus.push(bonus);
+                    await actor.update({ 'system.defences.ac.bonus': acBonus });
+                    break;
+                  case 'Speed':
+                    const speedBonus = actor.system.movement.base.bonus || [];
+                    speedBonus.push(bonus);
+                    await actor.update({ 'system.movement.base.bonus': speedBonus });
+                    break;
+                  case 'Damage':
+                    const damageBonus = actor.system.modifiers.damage.bonus || [];
+                    damageBonus.push(bonus);
+                    await actor.update({ 'system.modifiers.damage.bonus': damageBonus });
+                    break;
+                  case 'Saving Throws':
+                    const saveBonus = actor.system.details.saves.bonus || [];
+                    saveBonus.push(bonus);
+                    await actor.update({ 'system.details.saves.bonus': saveBonus });
+                    break;
+                  case 'Attacks':
+                    const attackBonus = actor.system.modifiers.attack.bonus || [];
+                    attackBonus.push(bonus);
+                    await actor.update({ 'system.modifiers.attack.bonus': attackBonus });
+                    break;
+                  default:
+                    ui.notifications.warn(`Modifier type "${finalModifierType}" is not supported yet.`);
+                    break;
                 }
               }
             }
@@ -484,8 +543,35 @@ export class NotesDisplay {
           </div>
 
           <div id="modifierSection" style="display: none;">
-            <div style="margin-bottom: 15px; padding: 10px; background-color: #f0f0f0; border-radius: 4px;">
-              <p>Modifier section placeholder</p>
+            <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+              <div style="width: 50%;">
+                <label>Modifier Type:</label>
+                <select id="modifierType" style="width: 100%; padding: 5px;">
+                  <option value="">Select type...</option>
+                  <option value="AC">AC</option>
+                  <option value="Attacks">Attacks</option>
+                  <option value="Damage">Damage</option>
+                  <option value="Saving Throws">Saving Throws</option>
+                  <option value="Speed">Speed</option>
+                </select>
+              </div>
+              <div style="width: 50%;">
+                <label>Value:</label>
+                <input type="number" id="modifierValue" style="width: 100%; padding: 5px;" placeholder="Enter value">
+              </div>
+            </div>
+            <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+              <div style="width: 50%;">
+                <label>Duration:</label>
+                <select id="modifierDuration" style="width: 100%; padding: 5px;">
+                  <option value="">Select duration...</option>
+                  ${durationOptions}
+                </select>
+              </div>
+              <div style="width: 50%;">
+                <label>Duration Overwrite:</label>
+                <input type="text" id="modifierDurationOverwrite" style="width: 100%; padding: 5px;" placeholder="Enter custom duration">
+              </div>
             </div>
           </div>
 
