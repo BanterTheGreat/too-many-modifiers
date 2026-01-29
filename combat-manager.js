@@ -50,6 +50,8 @@ export class CombatManager {
 
     if (!token) return;
 
+    console.log(token);
+
     let notesArray = token.getFlag("too-many-modifiers", "notes") || [];
 
     if (!Array.isArray(notesArray)) return;
@@ -59,29 +61,24 @@ export class CombatManager {
 
     // Create a chat message for each "Save Ends" note
     saveEndsNotes.forEach(async note => {
-      const roll = new Roll("1d20");
+      let savingThrowBonus = token.actor.system.details.saves.value;
+
+      const roll = new Roll(`1d20 + ${savingThrowBonus}`);
       const rollResult = await roll.evaluate();
       const rollTotal = rollResult.total;
       const success = rollTotal >= 10;
 
-      const content = `
-        <div style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
-          <p><strong>${token.name}</strong> makes a saving throw against: <strong>${note.text}</strong></p>
-          <p>Roll Result: <strong>${rollTotal}</strong></p>
-          <p>Result: ${success ? '<span style="color: green;"><strong>Success!</strong></span>' : '<span style="color: red;"><strong>Failed</strong></span>'}</p>
-        </div>
-      `;
+      const flavorText = `<p><strong>${token.name}</strong> makes a saving throw against: <strong>${note.text}</strong></p>
+        <p>Result: ${success ? '<span style="color: green;"><strong>Success!</strong> The note has been removed.</span>' : '<span style="color: red;"><strong>Failed</strong></span>'}</p>`;
 
-      ChatMessage.create({
-        content: content,
-        type: CONST.CHAT_MESSAGE_TYPES.ROLL,
-        rolls: [rollResult]
+      await rollResult.toMessage({
+        flavor: flavorText
       });
 
       // If successful, remove the note immediately
       if (success) {
         const updatedNotesArray = notesArray.filter(n => n !== note);
-        // token.setFlag("too-many-modifiers", "notes", updatedNotesArray);
+        token.setFlag("too-many-modifiers", "notes", updatedNotesArray);
       }
     });
   }
