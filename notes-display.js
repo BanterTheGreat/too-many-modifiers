@@ -1,4 +1,5 @@
 import { Constants } from "./constants.js";
+import { TrackingHelper } from "./tracking-helper.js";
 
 export class NotesDisplay {
 
@@ -41,264 +42,52 @@ export class NotesDisplay {
         `)
     colRight.append(button);
     button.on("click", (e) => {
-      game.trackingDisplay._editTracking(token);
+      const selected = canvas.tokens.controlled && canvas.tokens.controlled.length ? canvas.tokens.controlled : [];
+      if (!selected.length) return;
+      game.trackingDisplay._editTracking(selected);
     })
   }
 
-  _editTracking(token) {
-    var tokenDocument = token.document;
+  _editTracking(tokens) {
+    var tokenDocuments = tokens.map(token => token.document);
+    const tokenDocument = tokenDocuments[0];
 
-    // Get the combat the token is in
-    const combat = game.combats.find(c => c.combatants.some(combatant => combatant.actor?.id === tokenDocument.actor?.id));
-    const combatantNames = combat?.combatants.map(c => c.name);
-    console.log(token);
-    console.log(tokenDocument);
+    // Get the combat one of the tokens is in, we do not currently support multiple combats at once. 
+    const combat = game.combats.find(c => c.combatants.some(combatant => combatant.actor?.id === tokenDocuments[0].actor?.id));
 
-    let notesArray = tokenDocument.getFlag("too-many-modifiers", "notes") || [];
+    console.log(tokens);
+    console.log(tokenDocuments);
 
-    if (!Array.isArray(notesArray)) {
-      ui.notifications.warn("Non-Array notes data found. Resetting notes.");
+    // Only include notes that are present on every selected token (match by text+duration)
+    const primaryNotes = tokenDocument.getFlag("too-many-modifiers", "notes") || [];
+    let notesArray = [];
+    if (!Array.isArray(primaryNotes)) {
+      ui.notifications.warn("Non-Array notes data found on primary token. Resetting notes.");
       notesArray = [];
+    } else {
+      notesArray = primaryNotes.filter(n => {
+        return tokenDocuments.every(td => {
+          if (td === tokenDocument) return true;
+          const otherNotes = td.getFlag("too-many-modifiers", "notes");
+          return Array.isArray(otherNotes) && otherNotes.some(on => on.text === n.text && on.duration === n.duration);
+        });
+      });
     }
 
     // Generate HTML elements
     const dialogContent = this._generateTrackingDialogHtml(combat, notesArray);
 
     new Dialog({
-      title: "Edit Notes",
+      title: `Editing tracking for ${tokens.length > 1 ? `${tokens.length} tokens` : `"${tokenDocument.name}"`}`,
       content: dialogContent,
       buttons: {
         save: {
           label: "Save",
           callback: async (dialogHtml) => {
-            const noteType = dialogHtml.find('#noteType').val();
-
-            // The text we show.
-            let noteText = '';
-            // The duration of the note.
-            let finalDuration = '';
-            // The combatantId if applicable for EoT durations.
-            let combatantId = null;
-
-            // Duration Exclusive
-            let isCondition = false;
-            let systemCondition = '';
-
-            // Ongoing Exclusive
-            let isOngoing = false;
-            let finalOngoingType = '';
-            let finalOngoingDamage = 0;
-
-            // Modifier Exclusive
-            let isModifier = false;
-            let finalModifierType = '';
-            let finalModifierValue = 0;
-
-            // Resistances Exclusive
-            let isResistances = false;
-            let finalResistanceType = '';
-            let finalResistanceValue = 0;
-
-            switch (noteType) {
-              case 'ongoing':
-                const ongoingType = dialogHtml.find('#ongoingType').val();
-                const ongoingDamage = dialogHtml.find('#ongoingDamage').val();
-                const ongoingDuration = dialogHtml.find('#ongoingDuration').val();
-                const ongoingDurationOverwrite = dialogHtml.find('#ongoingDurationOverwrite').val();
-
-                if (!ongoingType || !ongoingDamage) break;
-
-                noteText = `Ongoing ${ongoingDamage} ${ongoingType}`;
-                finalDuration = ongoingDurationOverwrite || ongoingDuration;
-                finalOngoingType = ongoingType;
-                finalOngoingDamage = ongoingDamage;
-                isOngoing = true;
-                break;
-              case 'condition':
-                const conditionValue = dialogHtml.find('#condition').val();
-                const durationValue = dialogHtml.find('#duration').val();
-
-                if (!conditionValue || !durationValue) break;
-
-                noteText = conditionValue;
-                finalDuration = durationValue;
-                systemCondition = conditionValue;
-                isCondition = true;
-                break;
-              case 'modifier':
-                const modifierType = dialogHtml.find('#modifierType').val();
-                const modifierValue = dialogHtml.find('#modifierValue').val();
-                const modifierDuration = dialogHtml.find('#modifierDuration').val();
-                const modifierDurationOverwrite = dialogHtml.find('#modifierDurationOverwrite').val();
-
-                if (!modifierType || !modifierValue) break;
-
-                noteText = `${modifierValue > 0 ? '+' : ''}${modifierValue} ${modifierType}`;
-                finalDuration = modifierDurationOverwrite || modifierDuration;
-                finalModifierType = modifierType;
-                finalModifierValue = modifierValue;
-                isModifier = true;
-                break;
-              case 'resistances':
-                const resistanceType = dialogHtml.find('#resistanceType').val();
-                const resistanceValue = dialogHtml.find('#resistanceValue').val();
-                const resistanceDuration = dialogHtml.find('#resistanceDuration').val();
-                const resistanceDurationOverwrite = dialogHtml.find('#resistanceDurationOverwrite').val();
-
-                if (!resistanceType || !resistanceValue) break;
-
-                noteText = `${resistanceValue > 0 ? '+' : ''}${resistanceValue} ${resistanceType} Resistance`;
-                finalDuration = resistanceDurationOverwrite || resistanceDuration;
-                finalResistanceType = resistanceType;
-                finalResistanceValue = resistanceValue;
-                isResistances = true;
-                break;
-              case 'manual':
-                const manualCondition = dialogHtml.find('#manualCondition').val();
-                const manualDuration = dialogHtml.find('#manualDuration').val();
-
-                if (!manualCondition || !manualDuration) break;
-
-                noteText = manualCondition;
-                finalDuration = manualDuration;
-                break;
-              default:
-                ui.notifications.warn("Please select a valid note type.");
-                return;
+            for (const token of tokens) {
+              await this._resolveDialogInput(token, dialogHtml);
             }
-
-            // Find combatantId if duration is an EoT option
-            if (finalDuration?.startsWith("EoT ")) {
-              const combatantName = finalDuration.replace("EoT ", "");
-              const combatant = combat?.combatants.find(c => c.name === combatantName);
-              combatantId = combatant?.id;
-            }
-
-            // Get existing notes array or create new one
-            const existingNotes = tokenDocument.getFlag("too-many-modifiers", "notes") || [];
-            let updatedNotesArray = Array.isArray(existingNotes) ? [...existingNotes] : [];
-
-            // Get checked note indices to remove
-            const checkedIndices = new Set();
-            dialogHtml.find('input[type="checkbox"][id^="note-"]').each(function () {
-              if ($(this).is(':checked')) {
-                const index = parseInt($(this).attr('id').replace('note-', ''));
-                checkedIndices.add(index);
-              }
-            });
-
-            // Remove checked notes (iterate backwards to avoid index issues)
-            for (let i = updatedNotesArray.length - 1; i >= 0; i--) {
-              if (checkedIndices.has(i)) {
-                updatedNotesArray.splice(i, 1);
-              }
-            }
-
-            // Add new note if text was entered
-            if (noteText.trim()) {
-              const newNote = {
-                text: noteText,
-                duration: finalDuration,
-                condition: systemCondition || null,
-                combatantId: combatantId,
-                round: combat?.round,
-                turn: combat?.turn,
-                ongoingType: isOngoing ? finalOngoingType : null,
-                ongoingDamage: isOngoing ? finalOngoingDamage : null,
-                modifierType: isModifier ? finalModifierType : null,
-                modifierValue: isModifier ? finalModifierValue : null,
-                resistanceType: isResistances ? finalResistanceType : null,
-              };
-
-              updatedNotesArray.push(newNote);
-
-              // Apply condition if selected
-              if (isCondition && tokenDocument.actor) {
-                const actor = tokenDocument.actor;
-                const conditionEffect = CONFIG.statusEffects.find(e => e.name === systemCondition);
-                if (conditionEffect) {
-                  await actor.createEmbeddedDocuments("ActiveEffect", [{
-                    icon: conditionEffect.img,
-                    name: conditionEffect.name,
-                    statuses: new Set([conditionEffect.id]),
-                    flags: {
-                      dnd4e: {
-                        effectData: {
-                          // Neccessary to prevent a null reference in the dnd4e system.
-                          durationType: "custom",
-                        }
-                      }
-                    }
-                  }]);
-                }
-              }
-
-              // Apply modifier if selected
-              if (isModifier && tokenDocument.actor) {
-                const actor = tokenDocument.actor;
-                const bonusName = `too-many-modifiers: ${noteText}`;
-                const bonus = {
-                  active: true,
-                  name: bonusName,
-                  note: noteText,
-                  value: finalModifierValue,
-                };
-
-                switch (finalModifierType) {
-                  case 'AC':
-                    const acBonus = actor.system.defences.ac.bonus || [];
-                    acBonus.push(bonus);
-                    await actor.update({ 'system.defences.ac.bonus': acBonus });
-                    break;
-                  case 'Speed':
-                    const speedBonus = actor.system.movement.base.bonus || [];
-                    speedBonus.push(bonus);
-                    await actor.update({ 'system.movement.base.bonus': speedBonus });
-                    break;
-                  case 'Damage':
-                    const damageBonus = actor.system.modifiers.damage.bonus || [];
-                    damageBonus.push(bonus);
-                    await actor.update({ 'system.modifiers.damage.bonus': damageBonus });
-                    break;
-                  case 'Saving Throws':
-                    const saveBonus = actor.system.details.saves.bonus || [];
-                    saveBonus.push(bonus);
-                    await actor.update({ 'system.details.saves.bonus': saveBonus });
-                    break;
-                  case 'Attacks':
-                    const attackBonus = actor.system.modifiers.attack.bonus || [];
-                    attackBonus.push(bonus);
-                    await actor.update({ 'system.modifiers.attack.bonus': attackBonus });
-                    break;
-                  default:
-                    ui.notifications.warn(`Modifier type "${finalModifierType}" is not supported yet.`);
-                    break;
-                }
-              }
-
-              // Apply resistances if selected
-              if (isResistances && tokenDocument.actor) {
-                const actor = tokenDocument.actor;
-                const bonusName = `too-many-modifiers: ${noteText}`;
-                const bonus = {
-                  active: true,
-                  name: bonusName,
-                  note: noteText,
-                  value: finalResistanceValue,
-                };
-
-                const resistancePath = `system.resistances.${finalResistanceType}.bonus`;
-                const resistanceBonus = getProperty(actor, resistancePath) || [];
-                resistanceBonus.push(bonus);
-                console.log(resistanceBonus);
-                console.log(resistancePath);
-                await actor.update({ [resistancePath]: resistanceBonus });
-              }
-            }
-
-            // Set the flag with the array
-            await tokenDocument.setFlag("too-many-modifiers", "notes", updatedNotesArray);
-          }
+          },
         },
         cancel: {
           label: "Close",
@@ -382,7 +171,7 @@ export class NotesDisplay {
     try {
       // We hide the note while hovering over a token.
       const { desc, color, stroke } = {
-        desc: this._formatNotesForDisplay(token?.document.flags["too-many-modifiers"]?.notes ?? []),
+        desc: TrackingHelper.formatNotesForDisplay(token?.document.flags["too-many-modifiers"]?.notes ?? []),
         color: "#ffffff",
         stroke: "#000000"
       };
@@ -444,23 +233,6 @@ export class NotesDisplay {
     token.notesDisplay.position.set(width / 2, x + y + (lineCount * ((this.fontSize * this.gridScale) + padding)) + (hovering ? 24 : 0));
   }
 
-  _formatNotesForDisplay(notes) {
-    if (!Array.isArray(notes)) {
-      return undefined;
-    }
-
-    // We got no notes, so this will result in us not rendering anything.
-    if (notes.length === 0) {
-      return "";
-    }
-
-    var resultArray = notes.map(note => {
-      return `${note.text} ◆ ${note.duration}`;
-    });
-
-    return resultArray.join("\n");
-  }
-
   _generateTrackingDialogHtml(combat, notesArray) {
     // Generate duration dropdown options from combatants
     const durationOptions = `
@@ -476,12 +248,6 @@ export class NotesDisplay {
       const value = condition.name || condition.id || label;
       return `<option value="${value}">${label}</option>`;
     }).join('');
-
-    // Add Ongoing option
-    const conditionOptionsWithOngoing = `
-      ${conditionOptions}
-      <option value="Ongoing">Ongoing Damage</option>
-    `;
 
     // Generate damage type options
     const damageTypes = CONFIG.DND4E?.damageTypes || {};
@@ -664,5 +430,241 @@ export class NotesDisplay {
         </div>
       </form>
     `;
+  }
+
+  async _resolveDialogInput(token, dialogHtml) {
+    const noteType = dialogHtml.find('#noteType').val();
+    const tokenDocument = token.document;
+
+    // The text we show.
+    let noteText = '';
+    // The duration of the note.
+    let finalDuration = '';
+    // The combatantId if applicable for EoT durations.
+    let combatantId = null;
+
+    // Duration Exclusive
+    let isCondition = false;
+    let systemCondition = '';
+
+    // Ongoing Exclusive
+    let isOngoing = false;
+    let finalOngoingType = '';
+    let finalOngoingDamage = 0;
+
+    // Modifier Exclusive
+    let isModifier = false;
+    let finalModifierType = '';
+    let finalModifierValue = 0;
+
+    // Resistances Exclusive
+    let isResistances = false;
+    let finalResistanceType = '';
+    let finalResistanceValue = 0;
+
+    switch (noteType) {
+      case 'ongoing':
+        const ongoingType = dialogHtml.find('#ongoingType').val();
+        const ongoingDamage = dialogHtml.find('#ongoingDamage').val();
+        const ongoingDuration = dialogHtml.find('#ongoingDuration').val();
+        const ongoingDurationOverwrite = dialogHtml.find('#ongoingDurationOverwrite').val();
+
+        if (!ongoingType || !ongoingDamage) break;
+
+        noteText = `Ongoing ${ongoingDamage} ${ongoingType}`;
+        finalDuration = ongoingDurationOverwrite || ongoingDuration;
+        finalOngoingType = ongoingType;
+        finalOngoingDamage = ongoingDamage;
+        isOngoing = true;
+        break;
+      case 'condition':
+        const conditionValue = dialogHtml.find('#condition').val();
+        const durationValue = dialogHtml.find('#duration').val();
+
+        if (!conditionValue || !durationValue) break;
+
+        noteText = conditionValue;
+        finalDuration = durationValue;
+        systemCondition = conditionValue;
+        isCondition = true;
+        break;
+      case 'modifier':
+        const modifierType = dialogHtml.find('#modifierType').val();
+        const modifierValue = dialogHtml.find('#modifierValue').val();
+        const modifierDuration = dialogHtml.find('#modifierDuration').val();
+        const modifierDurationOverwrite = dialogHtml.find('#modifierDurationOverwrite').val();
+
+        if (!modifierType || !modifierValue) break;
+
+        noteText = `${modifierValue > 0 ? '+' : ''}${modifierValue} ${modifierType}`;
+        finalDuration = modifierDurationOverwrite || modifierDuration;
+        finalModifierType = modifierType;
+        finalModifierValue = modifierValue;
+        isModifier = true;
+        break;
+      case 'resistances':
+        const resistanceType = dialogHtml.find('#resistanceType').val();
+        const resistanceValue = dialogHtml.find('#resistanceValue').val();
+        const resistanceDuration = dialogHtml.find('#resistanceDuration').val();
+        const resistanceDurationOverwrite = dialogHtml.find('#resistanceDurationOverwrite').val();
+
+        if (!resistanceType || !resistanceValue) break;
+
+        noteText = `${resistanceValue > 0 ? '+' : ''}${resistanceValue} ${resistanceType} Resistance`;
+        finalDuration = resistanceDurationOverwrite || resistanceDuration;
+        finalResistanceType = resistanceType;
+        finalResistanceValue = resistanceValue;
+        isResistances = true;
+        break;
+      case 'manual':
+        const manualCondition = dialogHtml.find('#manualCondition').val();
+        const manualDuration = dialogHtml.find('#manualDuration').val();
+
+        if (!manualCondition || !manualDuration) break;
+
+        noteText = manualCondition;
+        finalDuration = manualDuration;
+        break;
+      default:
+        ui.notifications.warn("Please select a valid note type.");
+        return;
+    }
+
+    // Find combatantId if duration is an EoT option
+    if (finalDuration?.startsWith("EoT ")) {
+      const combatantName = finalDuration.replace("EoT ", "");
+      const combatant = combat?.combatants.find(c => c.name === combatantName);
+      combatantId = combatant?.id;
+    }
+
+    // Get existing notes array or create new one
+    const existingNotes = tokenDocument.getFlag("too-many-modifiers", "notes") || [];
+    let updatedNotesArray = Array.isArray(existingNotes) ? [...existingNotes] : [];
+
+    // Get checked note indices to remove
+    const checkedIndices = new Set();
+    dialogHtml.find('input[type="checkbox"][id^="note-"]').each(function () {
+      if ($(this).is(':checked')) {
+        const index = parseInt($(this).attr('id').replace('note-', ''));
+        checkedIndices.add(index);
+      }
+    });
+
+    // Remove checked notes (iterate backwards to avoid index issues)
+    const removedNotes = [];
+    for (let i = updatedNotesArray.length - 1; i >= 0; i--) {
+      if (checkedIndices.has(i)) {
+        const [removed] = updatedNotesArray.splice(i, 1);
+        if (removed) removedNotes.push(removed);
+      }
+    }
+
+    // Add new note if text was entered
+    if (noteText.trim()) {
+      const newNote = {
+        text: noteText,
+        duration: finalDuration,
+        condition: systemCondition || null,
+        combatantId: combatantId,
+        round: combat?.round,
+        turn: combat?.turn,
+        ongoingType: isOngoing ? finalOngoingType : null,
+        ongoingDamage: isOngoing ? finalOngoingDamage : null,
+        modifierType: isModifier ? finalModifierType : null,
+        modifierValue: isModifier ? finalModifierValue : null,
+        resistanceType: isResistances ? finalResistanceType : null,
+      };
+
+      updatedNotesArray.push(newNote);
+
+      // Apply condition if selected
+      if (isCondition && tokenDocument.actor) {
+        const actor = tokenDocument.actor;
+        const conditionEffect = CONFIG.statusEffects.find(e => e.name === systemCondition);
+        if (conditionEffect) {
+          await actor.createEmbeddedDocuments("ActiveEffect", [{
+            icon: conditionEffect.img,
+            name: conditionEffect.name,
+            statuses: new Set([conditionEffect.id]),
+            flags: {
+              dnd4e: {
+                effectData: {
+                  // Neccessary to prevent a null reference in the dnd4e system.
+                  durationType: "custom",
+                }
+              }
+            }
+          }]);
+        }
+      }
+
+      // Apply modifier if selected
+      if (isModifier && tokenDocument.actor) {
+        const actor = tokenDocument.actor;
+        const bonusName = `too-many-modifiers: ${noteText}`;
+        const bonus = {
+          active: true,
+          name: bonusName,
+          note: noteText,
+          value: finalModifierValue,
+        };
+
+        switch (finalModifierType) {
+          case 'AC':
+            const acBonus = actor.system.defences.ac.bonus || [];
+            acBonus.push(bonus);
+            await actor.update({ 'system.defences.ac.bonus': acBonus });
+            break;
+          case 'Speed':
+            const speedBonus = actor.system.movement.base.bonus || [];
+            speedBonus.push(bonus);
+            await actor.update({ 'system.movement.base.bonus': speedBonus });
+            break;
+          case 'Damage':
+            const damageBonus = actor.system.modifiers.damage.bonus || [];
+            damageBonus.push(bonus);
+            await actor.update({ 'system.modifiers.damage.bonus': damageBonus });
+            break;
+          case 'Saving Throws':
+            const saveBonus = actor.system.details.saves.bonus || [];
+            saveBonus.push(bonus);
+            await actor.update({ 'system.details.saves.bonus': saveBonus });
+            break;
+          case 'Attacks':
+            const attackBonus = actor.system.modifiers.attack.bonus || [];
+            attackBonus.push(bonus);
+            await actor.update({ 'system.modifiers.attack.bonus': attackBonus });
+            break;
+          default:
+            ui.notifications.warn(`Modifier type "${finalModifierType}" is not supported yet.`);
+            break;
+        }
+      }
+
+      // Apply resistances if selected
+      if (isResistances && tokenDocument.actor) {
+        const actor = tokenDocument.actor;
+        const bonusName = `too-many-modifiers: ${noteText}`;
+        const bonus = {
+          active: true,
+          name: bonusName,
+          note: noteText,
+          value: finalResistanceValue,
+        };
+
+        const resistancePath = `system.resistances.${finalResistanceType}.bonus`;
+        const resistanceBonus = getProperty(actor, resistancePath) || [];
+        resistanceBonus.push(bonus);
+        await actor.update({ [resistancePath]: resistanceBonus });
+      }
+    }
+
+    // Set the flag with the array
+    await tokenDocument.setFlag("too-many-modifiers", "notes", updatedNotesArray);
+
+    // Clean up any additional data/effects for removed notes
+    for (const removedNote of removedNotes) {
+      await TrackingHelper.removeAdditionalNoteEffects(token, removedNote);
+    }
   }
 }

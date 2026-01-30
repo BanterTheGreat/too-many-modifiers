@@ -76,4 +76,21 @@ export class TrackingHelper {
     await TrackingHelper._removeModifierBonus(token, note);
     await TrackingHelper._removeResistanceBonus(token, note);
   }
+
+  static formatNotesForDisplay(notes) {
+    if (!Array.isArray(notes)) {
+      return undefined;
+    }
+
+    // We got no notes, so this will result in us not rendering anything.
+    if (notes.length === 0) {
+      return "";
+    }
+
+    var resultArray = notes.map(note => {
+      return `${note.text} ◆ ${note.duration}`;
+    });
+
+    return resultArray.join("\n");
+  }
 }
