@@ -1,7 +1,7 @@
 {
 	"id": "too-many-modifiers",
-	"title": "Too Many Modifiers",
-	"description": "Allows you to add notes to tokens which show on the UI",
+	"title": "Too Much Too Track",
+	"description": "Allows easy adding and automatic tracking of various status modifiers to tokens.",
 	"version": "1.0.1",
     "authors": [
         {

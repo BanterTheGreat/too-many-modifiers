@@ -3,12 +3,12 @@ import { Constants } from "./constants.js";
 export class NotesDisplay {
 
   static refreshToken(token, flags) {
-    game.notesDisplay._handleOverlay(token, token.hover);
+    game.trackingDisplay._handleOverlay(token, token.hover);
   }
 
   static onCanvasReady() {
     canvas.tokens?.placeables.forEach((token) => {
-      game.notesDisplay._handleOverlay(token, true);
+      game.trackingDisplay._handleOverlay(token, true);
     });
   }
 
@@ -16,7 +16,7 @@ export class NotesDisplay {
     // Get all the tokens because there can be two tokens of the same linked actor.
     const tokens = canvas.tokens?.placeables.filter((token) => token?.actor?.id === actor.id);
     // Call the _handleOverlay method for each token.
-    tokens?.forEach((token) => game.notesDisplay._handleOverlay(token, true));
+    tokens?.forEach((token) => game.trackingDisplay._handleOverlay(token, true));
   }
 
   static onUpdateToken(token, data, options, userId) {
@@ -24,7 +24,7 @@ export class NotesDisplay {
       // Get all the tokens because there can be two tokens of the same linked actor.
       const tokens = canvas.tokens?.placeables.filter((canvasToken) => canvasToken?.actor?.id === token.actorId);
       // Call the _handleOverlay method for each token.
-      tokens?.forEach((canvasToken) => game.notesDisplay._handleOverlay(canvasToken));
+      tokens?.forEach((canvasToken) => game.trackingDisplay._handleOverlay(canvasToken));
     }
   }
 
@@ -41,11 +41,11 @@ export class NotesDisplay {
         `)
     colRight.append(button);
     button.on("click", (e) => {
-      game.notesDisplay._editNotes(token);
+      game.trackingDisplay._editTracking(token);
     })
   }
 
-  _editNotes(token) {
+  _editTracking(token) {
     var tokenDocument = token.document;
 
     // Get the combat the token is in
@@ -62,7 +62,7 @@ export class NotesDisplay {
     }
 
     // Generate HTML elements
-    const dialogContent = this._generateNotesDialogHtml(combat, notesArray);
+    const dialogContent = this._generateTrackingDialogHtml(combat, notesArray);
 
     new Dialog({
       title: "Edit Notes",
@@ -461,7 +461,7 @@ export class NotesDisplay {
     return resultArray.join("\n");
   }
 
-  _generateNotesDialogHtml(combat, notesArray) {
+  _generateTrackingDialogHtml(combat, notesArray) {
     // Generate duration dropdown options from combatants
     const durationOptions = `
         <option value="${Constants.DURATION_ENCOUNTER}">${Constants.DURATION_ENCOUNTER}</option>
@@ -504,7 +504,7 @@ export class NotesDisplay {
 
     const notesTableHtml = notesArray.length > 0 ? `
           <div style="margin-bottom: 15px;">
-            <h3>Existing notes</h3>
+            <h3>Existing trackers</h3>
             <table style="width: 100%; border-collapse: collapse;">
               <thead>
                 <tr>
@@ -525,10 +525,10 @@ export class NotesDisplay {
     return `
       <form>
         ${notesTableHtml}
-        <h3>Add new note</h3>
+        <h3>Add new tracker</h3>
         <div style="width: 100%; max-width: 400px;">
           <div style="margin-bottom: 15px;">
-            <label>Note Type:</label>
+            <label>Tracking Type:</label>
             <select id="noteType" style="width: 100%; padding: 5px;">
               <option value="">Select type...</option>
               <option value="condition">Condition</option>

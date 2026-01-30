@@ -1,6 +1,42 @@
 import { Constants } from "./constants.js";
 
 export class CombatManager {
+  static onDeleteCombat(combat, _, __) {
+    if (!game.user.isGM) return;
+
+    combat.combatants.forEach(combatant => {
+      const token = combatant.token;
+      if (!token) return;
+
+      let notesArray = token.getFlag("too-many-modifiers", "notes") || [];
+
+      if (!Array.isArray(notesArray)) return;
+
+      // Find notes to remove
+      const removedNotes = [];
+      const updatedNotesArray = notesArray.filter(note => {
+        if (note.duration === Constants.DURATION_ENCOUNTER) {
+          removedNotes.push(note);
+          return false; // Remove this note
+        }
+        return true; // Keep this note
+      });
+
+      // Update the flag if notes were removed
+      if (updatedNotesArray.length !== notesArray.length) {
+        token.setFlag("too-many-modifiers", "notes", updatedNotesArray);
+
+        // Remove corresponding active effects
+        removedNotes.forEach(async note => {
+          await game.combatManager._removeAdditionalNoteEffects(token, note);
+        });
+
+        // Create chat message with removed notes
+        game.combatManager._createRemovedNotesMessage(token.name, removedNotes);
+      }
+    });
+  }
+
   static onCombatRound(combat, roundObject) {
     if (!game.user.isGM) return;
 
@@ -31,9 +67,7 @@ export class CombatManager {
 
         // Remove corresponding active effects
         removedNotes.forEach(async note => {
-          game.combatManager._removeConditionEffect(token, note.text);
-          await game.combatManager._removeModifierBonus(token, note);
-          await game.combatManager._removeResistanceBonus(token, note);
+          await game.combatManager._removeAdditionalNoteEffects(token, note);
         });
 
         // Create chat message with removed notes
@@ -45,8 +79,11 @@ export class CombatManager {
   static onCombatTurnChange(combat, previous, current) {
     if (!game.user.isGM) return;
 
+    // Happens at the END of the previous turn.
     game.combatManager._rollSavingThrows(combat, previous);
     game.combatManager._removeEndOfTurnNotes(combat, previous);
+
+    // Happens at the START of the current turn.
     game.combatManager._resolveOngoingDamage(combat, current);
   }
 
@@ -84,9 +121,7 @@ export class CombatManager {
       if (success) {
         const updatedNotesArray = notesArray.filter(n => n !== note);
         token.setFlag("too-many-modifiers", "notes", updatedNotesArray);
-        game.combatManager._removeConditionEffect(token, note.text);
-        await game.combatManager._removeModifierBonus(token, note);
-        await game.combatManager._removeResistanceBonus(token, note);
+        await game.combatManager._removeAdditionalNoteEffects(token, note);
         game.combatManager._createRemovedNotesMessage(token.name, [note]);
       }
     });
@@ -162,9 +197,7 @@ export class CombatManager {
 
         // Remove corresponding active effects
         removedNotes.forEach(async note => {
-          game.combatManager._removeConditionEffect(token, note.text);
-          await game.combatManager._removeModifierBonus(token, note);
-          await game.combatManager._removeResistanceBonus(token, note);
+          await game.combatManager._removeAdditionalNoteEffects(token, note);
         });
 
         // Create chat message with removed notes
@@ -187,9 +220,12 @@ export class CombatManager {
     });
   }
 
-  _removeConditionEffect(token, conditionName) {
+  //TODO: Move these 4 methods to a seperate manager class. Can be statics.
+
+  _removeConditionEffect(token, note) {
     if (!token?.actor) return;
 
+    const conditionName = note.text;
     const actor = token.actor;
     const effect = actor.effects.find(e => e.name === conditionName);
 
@@ -255,5 +291,12 @@ export class CombatManager {
     const resistanceBonus = getProperty(actor, resistancePath) || [];
     const updatedResistanceBonus = resistanceBonus.filter(b => b.name !== bonusName);
     await actor.update({ [resistancePath]: updatedResistanceBonus });
+  }
+
+  /// Cleans up all effects related to a note to prevent any weird leftovers.
+  async _removeAdditionalNoteEffects(token, note) {
+    game.combatManager._removeConditionEffect(token, note);
+    await game.combatManager._removeModifierBonus(token, note);
+    await game.combatManager._removeResistanceBonus(token, note);
   }
 }
