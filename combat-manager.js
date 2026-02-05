@@ -198,7 +198,7 @@ export class CombatManager {
 
         // Remove corresponding active effects
         removedNotes.forEach(async note => {
-          await game.combatManager._removeAdditionalNoteEffects(token, note);
+          await TrackingHelper.removeAdditionalNoteEffects(token, note);
         });
 
         // Create chat message with removed notes

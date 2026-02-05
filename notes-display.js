@@ -3,6 +3,13 @@ import { TrackingHelper } from "./tracking-helper.js";
 
 export class NotesDisplay {
 
+  // This method is very much public so other modules can call it if needed.
+  openMenu() {
+    const selected = canvas.tokens.controlled && canvas.tokens.controlled.length ? canvas.tokens.controlled : [];
+    if (!selected.length) return;
+    game.trackingDisplay._editTracking(selected);
+  }
+
   static refreshToken(token, flags) {
     game.trackingDisplay._handleOverlay(token, token.hover);
   }
@@ -42,9 +49,7 @@ export class NotesDisplay {
         `)
     colRight.append(button);
     button.on("click", (e) => {
-      const selected = canvas.tokens.controlled && canvas.tokens.controlled.length ? canvas.tokens.controlled : [];
-      if (!selected.length) return;
-      game.trackingDisplay._editTracking(selected);
+      game.trackingDisplay.openMenu();
     })
   }
 
@@ -85,7 +90,7 @@ export class NotesDisplay {
           label: "Save",
           callback: async (dialogHtml) => {
             for (const token of tokens) {
-              await this._resolveDialogInput(token, dialogHtml);
+              await this._resolveDialogInput(token, dialogHtml, combat);
             }
           },
         },
@@ -422,9 +427,16 @@ export class NotesDisplay {
                 <input type="text" id="manualCondition" style="width: 100%; padding: 5px;" placeholder="Enter condition text">
               </div>
               <div style="width: 50%;">
-                <label>Manual Duration:</label>
-                <input type="text" id="manualDuration" style="width: 100%; padding: 5px;" placeholder="Enter duration">
+                <label>Duration:</label>
+                <select id="manualDuration" style="width: 100%; padding: 5px;">
+                  <option value="">Select duration...</option>
+                  ${durationOptions}
+                </select>
               </div>
+            </div>
+            <div style="margin-bottom: 15px;">
+              <label>Duration Overwrite:</label>
+              <input type="text" id="manualDurationOverwrite" style="width: 100%; padding: 5px;" placeholder="Enter custom duration">
             </div>
           </div>
         </div>
@@ -432,7 +444,7 @@ export class NotesDisplay {
     `;
   }
 
-  async _resolveDialogInput(token, dialogHtml) {
+  async _resolveDialogInput(token, dialogHtml, combat) {
     const noteType = dialogHtml.find('#noteType').val();
     const tokenDocument = token.document;
 
@@ -519,11 +531,12 @@ export class NotesDisplay {
       case 'manual':
         const manualCondition = dialogHtml.find('#manualCondition').val();
         const manualDuration = dialogHtml.find('#manualDuration').val();
+        const manualDurationOverwrite = dialogHtml.find('#manualDurationOverwrite').val();
 
-        if (!manualCondition || !manualDuration) break;
+        if (!manualCondition || (!manualDuration && !manualDurationOverwrite)) break;
 
         noteText = manualCondition;
-        finalDuration = manualDuration;
+        finalDuration = manualDurationOverwrite || manualDuration;
         break;
       default:
         ui.notifications.warn("Please select a valid note type.");
