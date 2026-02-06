@@ -181,7 +181,7 @@ export class NotesDisplay {
         stroke: "#000000"
       };
       if (desc !== undefined && color && stroke) {
-        const { width } = token.getSize();
+        const { width } = token.document.getSize();
         const y = -2 + (35 * this.gridScale); // 25 = this.height;
         const position = 2;
         const x = (width / 2) * position;
