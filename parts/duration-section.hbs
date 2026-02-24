@@ -2,15 +2,28 @@
          data-group="primary"
          data-tab="duration">
   <div style="margin-bottom: 15px; display: flex; gap: 10px;">
-    <div style="width: 100%;">
+    <div style="width: 50%;">
       <label>Duration:</label>
       <select id="duration"
+              name="duration"
               style="width: 100%; padding: 5px;">
         <option value="">Select duration...</option>
-        {{#each durationOptions as |opt|}}
-        <option value="{{opt.value}}">{{opt.label}}</option>
+        {{#each durations as |opt|}}
+        <option value="{{opt.value}}"
+                {{#if
+                (eq
+                opt.value
+                ../defaultDuration)}}selected{{/if}}>{{opt.label}}</option>
         {{/each}}
       </select>
+    </div>
+    <div style="width: 50%;">
+      <label>Duration Overwrite:</label>
+      <input type="text"
+             id="durationOverride"
+             name="durationOverride"
+             style="width: 100%; padding: 5px;"
+             placeholder="Enter custom duration">
     </div>
   </div>
 </section>

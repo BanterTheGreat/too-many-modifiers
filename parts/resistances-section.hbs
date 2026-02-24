@@ -6,16 +6,16 @@
   <div style="margin-bottom: 15px; display: flex; gap: 10px;">
     <div style="width: 50%;">
       <label>Type:</label>
-      <select id="resistanceType" style="width: 100%; padding: 5px;">
+      <select id="resistanceType" name="resistanceType" style="width: 100%; padding: 5px;">
         <option value="">Select type...</option>
-        {{#each damageTypeOptions as |opt|}}
+        {{#each damageTypes as |opt|}}
         <option value="{{opt.value}}">{{opt.label}}</option>
         {{/each}}
       </select>
     </div>
     <div style="width: 50%;">
       <label>Value:</label>
-      <input type="number" id="resistanceValue" style="width: 100%; padding: 5px;" placeholder="Enter value">
+      <input type="number" id="resistanceValue" name="resistanceValue" style="width: 100%; padding: 5px;" placeholder="Enter value">
     </div>
   </div>
 </section>

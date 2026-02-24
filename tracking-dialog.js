@@ -2,6 +2,7 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
 import { Constants } from "./constants.js";
 import { MODULE_ID } from "./main.js";
+import { TrackingHelper } from "./tracking-helper.js";
 
 export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   constructor(tokens) {
@@ -17,6 +18,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
 
     super(options);
     this.tokens = tokens;
+    this.currentTab = 'modifiers';
   }
 
   static DEFAULT_OPTIONS = {
@@ -33,15 +35,15 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   static async onSubmit(event, form, formData) {
-    console.error(event);
-    console.error(form);
-    console.error(formData);
+    const data = formData.object;
+    console.log(data); // { fieldName: "value", ... }
   }
 
   get tokenDocuments() { return this.tokens.map(token => token.document); }
 
   // Get the combat one of the tokens is in, we do not currently support multiple combats at once.
   get combat() { return game.combats.find(c => c.combatants.some(combatant => combatant.actor?.id === this.tokenDocuments[0].actor?.id)); }
+  get currentCombatant() { return this.combat?.combatants; }
 
   static PARTS = {
     notes: {
@@ -108,7 +110,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     ];
     if (this.combat) {
       for (const c of this.combat.combatants) {
-        durationOptions.push({ value: `EoT ${c.name}`, label: `EoT ${c.name}` });
+        durationOptions.push(TrackingHelper.getCombatantDuration(c));
       }
     }
 
@@ -126,9 +128,16 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       return { value: key, label };
     });
 
+    // Default duration: EoT of current combatant if in combat
+    const currentCombatant = this.combat?.combatant;
+    const defaultDuration = currentCombatant
+      ? TrackingHelper.getCombatantDuration(currentCombatant).value
+      : "";
+
     return {
       notes: [...this.getNotes()],
       durations: durationOptions,
+      defaultDuration,
       conditions: conditionOptions,
       damageTypes: damageTypeOptions,
       tabs: this._prepareTabs("primary"),
@@ -173,18 +182,24 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     return [];
   }
 
-  async _preparePartContext(partId, context) {
-    console.error(partId);
-    switch (partId) {
-      case 'conditions':
-      case 'modifiers':
-      case 'resistances':
-      case 'ongoing':
-      case 'manual':
-        context.tab = context.tabs[partId];
-        break;
-      default:
+  _onClickTab(event) {
+    const selectedTab = event.srcElement.dataset.tab;
+    this.currentTab = selectedTab;
+
+    // Auto-set duration based on selected tab
+    const durationSelect = this.element.querySelector('[name="duration"]');
+    if (durationSelect) {
+      if (selectedTab === "ongoing") {
+        durationSelect.value = Constants.DURATION_SAVE;
+      } else {
+        const currentCombatant = this.combat?.combatant;
+        if (currentCombatant) {
+          const duration = TrackingHelper.getCombatantDuration(currentCombatant);
+          durationSelect.value = duration.value;
+        }
+      }
     }
-    return context;
+
+    super._onClickTab(event);
   }
 }

@@ -15,7 +15,7 @@
       {{#each notes as |note|}}
       <tr>
         <td style="padding: 5px; border: 1px solid #ccc; width: 30px;">
-          <input type="checkbox" id="note-{{@index}}" style="cursor: pointer;">
+          <input type="checkbox" id="note-{{@index}}" name="deleteNote.{{@index}}" style="cursor: pointer;">
         </td>
         <td style="padding: 5px; border: 1px solid #ccc;">{{note.text}}</td>
         <td style="padding: 5px; border: 1px solid #ccc;">{{note.duration}}</td>

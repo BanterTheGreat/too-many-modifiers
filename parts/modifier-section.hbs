@@ -1,12 +1,12 @@
-<section
-  class="tab tmm-tab-modifiers {{tab.cssClass}}"
-  data-group="primary"
-  data-tab="modifiers"
->
+<section class="tab tmm-tab-modifiers {{tab.cssClass}}"
+         data-group="primary"
+         data-tab="modifiers">
   <div style="margin-bottom: 15px; display: flex; gap: 10px;">
     <div style="width: 50%;">
       <label>Modifier Type:</label>
-      <select id="modifierType" style="width: 100%; padding: 5px;">
+      <select id="modifierType"
+              name="modifierType"
+              style="width: 100%; padding: 5px;">
         <option value="">Select type...</option>
         <option value="AC">AC</option>
         <option value="Attacks">Attacks</option>
@@ -15,9 +15,24 @@
         <option value="Speed">Speed</option>
       </select>
     </div>
-    <div style="width: 50%;">
+    <div style="width: 25%;">
+      <label>Type:</label>
+      <select id="bonusType"
+              name="bonusType"
+              style="width: 100%; padding: 5px;">
+        <option value="power">Power</option>
+        <option value="item">Item</option>
+        <option value="race">Race</option>
+        <option value="untyped">Untyped</option>
+      </select>
+    </div>
+    <div style="width: 25%;">
       <label>Value:</label>
-      <input type="number" id="modifierValue" style="width: 100%; padding: 5px;" placeholder="Enter value">
+      <input type="number"
+             id="modifierValue"
+             name="modifierValue"
+             style="width: 100%; padding: 5px;"
+             placeholder="Enter value">
     </div>
   </div>
 </section>

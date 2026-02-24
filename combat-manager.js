@@ -88,7 +88,7 @@ export class CombatManager {
     CombatManager._resolveOngoingDamage(combat, current);
   }
 
-  _rollSavingThrows(combat, previous) {
+  static _rollSavingThrows(combat, previous) {
     const previousCombatantId = previous.combatantId;
     const previousCombatant = combat.combatants.find(c => c.id === previousCombatantId);
     const token = previousCombatant?.token;
@@ -128,7 +128,7 @@ export class CombatManager {
     });
   }
 
-  _resolveOngoingDamage(combat, current) {
+  static _resolveOngoingDamage(combat, current) {
     const currentCombatantId = current.combatantId;
     const currentCombatant = combat.combatants.find(c => c.id === currentCombatantId);
     const token = currentCombatant?.token;
@@ -154,7 +154,7 @@ export class CombatManager {
     });
   }
 
-  _removeEndOfTurnNotes(combat, previous) {
+  static _removeEndOfTurnNotes(combat, previous) {
     const previousRound = previous.round;
     const previousTurn = previous.turn;
     const previousCombatantId = previous.combatantId;
@@ -208,7 +208,7 @@ export class CombatManager {
     });
   }
 
-  _createRemovedNotesMessage(tokenName, removedNotes) {
+  static _createRemovedNotesMessage(tokenName, removedNotes) {
     const notesList = removedNotes.map(note => `<li>${note.text} (${note.duration})</li>`).join('');
     const content = `
         Removing notes & conditions from <strong>${tokenName}</strong><br>

@@ -1,4 +1,8 @@
 export class TrackingHelper {
+  static getCombatantDuration(combatant) {
+    return { value: `EoT ${combatant.name}`, label: `EoT ${combatant.name}` };
+  }
+
   static _removeConditionEffect(token, note) {
     if (!token?.actor) return;
 
