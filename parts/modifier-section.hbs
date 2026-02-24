@@ -1,0 +1,34 @@
+<div id="modifierSection" style="display: none;">
+  <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+    <div style="width: 50%;">
+      <label>Modifier Type:</label>
+      <select id="modifierType" style="width: 100%; padding: 5px;">
+        <option value="">Select type...</option>
+        <option value="AC">AC</option>
+        <option value="Attacks">Attacks</option>
+        <option value="Damage">Damage</option>
+        <option value="Saving Throws">Saving Throws</option>
+        <option value="Speed">Speed</option>
+      </select>
+    </div>
+    <div style="width: 50%;">
+      <label>Value:</label>
+      <input type="number" id="modifierValue" style="width: 100%; padding: 5px;" placeholder="Enter value">
+    </div>
+  </div>
+  <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+    <div style="width: 50%;">
+      <label>Duration:</label>
+      <select id="modifierDuration" style="width: 100%; padding: 5px;">
+        <option value="">Select duration...</option>
+        {{#each durationOptions as |opt|}}
+        <option value="{{opt.value}}">{{opt.label}}</option>
+        {{/each}}
+      </select>
+    </div>
+    <div style="width: 50%;">
+      <label>Duration Overwrite:</label>
+      <input type="text" id="modifierDurationOverwrite" style="width: 100%; padding: 5px;" placeholder="Enter custom duration">
+    </div>
+  </div>
+</div>

@@ -1,0 +1,29 @@
+{{#if notes.length}}
+<div style="margin-bottom: 15px;">
+  <h3>Existing trackers</h3>
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead>
+      <tr>
+        <th style="padding: 5px; border: 1px solid #ccc; text-align: left; width: 30px;">Delete?</th>
+        <th style="padding: 5px; border: 1px solid #ccc; text-align: left;">Text</th>
+        <th style="padding: 5px; border: 1px solid #ccc; text-align: left;">Duration</th>
+        <th style="padding: 5px; border: 1px solid #ccc; text-align: left;">Round</th>
+        <th style="padding: 5px; border: 1px solid #ccc; text-align: left;">Turn</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each notes as |note|}}
+      <tr>
+        <td style="padding: 5px; border: 1px solid #ccc; width: 30px;">
+          <input type="checkbox" id="note-{{@index}}" style="cursor: pointer;">
+        </td>
+        <td style="padding: 5px; border: 1px solid #ccc;">{{note.text}}</td>
+        <td style="padding: 5px; border: 1px solid #ccc;">{{note.duration}}</td>
+        <td style="padding: 5px; border: 1px solid #ccc;">{{#if note.round}}{{note.round}}{{else}}-{{/if}}</td>
+        <td style="padding: 5px; border: 1px solid #ccc;">{{#if note.turn}}{{note.turn}}{{else}}-{{/if}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+</div>
+{{/if}}

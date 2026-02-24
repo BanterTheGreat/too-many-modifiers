@@ -33,7 +33,7 @@ export class CombatManager {
         });
 
         // Create chat message with removed notes
-        game.combatManager._createRemovedNotesMessage(token.name, removedNotes);
+        CombatManager._createRemovedNotesMessage(token.name, removedNotes);
       }
     });
   }
@@ -72,7 +72,7 @@ export class CombatManager {
         });
 
         // Create chat message with removed notes
-        game.combatManager._createRemovedNotesMessage(token.name, removedNotes);
+        CombatManager._createRemovedNotesMessage(token.name, removedNotes);
       }
     });
   }
@@ -81,11 +81,11 @@ export class CombatManager {
     if (!game.user.isGM) return;
 
     // Happens at the END of the previous turn.
-    game.combatManager._rollSavingThrows(combat, previous);
-    game.combatManager._removeEndOfTurnNotes(combat, previous);
+    CombatManager._rollSavingThrows(combat, previous);
+    CombatManager._removeEndOfTurnNotes(combat, previous);
 
     // Happens at the START of the current turn.
-    game.combatManager._resolveOngoingDamage(combat, current);
+    CombatManager._resolveOngoingDamage(combat, current);
   }
 
   _rollSavingThrows(combat, previous) {
@@ -123,7 +123,7 @@ export class CombatManager {
         const updatedNotesArray = notesArray.filter(n => n !== note);
         token.setFlag("too-many-modifiers", "notes", updatedNotesArray);
         await TrackingHelper.removeAdditionalNoteEffects(token, note);
-        game.combatManager._createRemovedNotesMessage(token.name, [note]);
+        CombatManager._createRemovedNotesMessage(token.name, [note]);
       }
     });
   }
@@ -202,7 +202,7 @@ export class CombatManager {
         });
 
         // Create chat message with removed notes
-        game.combatManager._createRemovedNotesMessage(token.name, removedNotes);
+        CombatManager._createRemovedNotesMessage(token.name, removedNotes);
       }
 
     });
