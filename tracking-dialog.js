@@ -36,7 +36,51 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
 
   static async onSubmit(event, form, formData) {
     const data = formData.object;
-    console.log(data); // { fieldName: "value", ... }
+    const duration = data.durationOverride || data.duration;
+    const combatantId = this._getCombatantIfEoT(duration);
+    var note = null;
+
+    const protoNote = {
+      duration: duration,
+      combatantId: combatantId,
+      round: this.combat?.round,
+      turn: this.combat?.turn,
+    };
+
+    switch (this.currentTab) {
+      case "conditions":
+        note = foundry.utils.mergeObject(protoNote, {
+          condition: data.condition,
+          text: data.condition,
+        });
+        break;
+      case "ongoing":
+        note = foundry.utils.mergeObject(protoNote, {
+          ongoingType: data.ongoingType,
+          ongoingDamage: data.ongoingDamage,
+          text: `Ongoing ${data.ongoingDamage} ${data.ongoingType}`,
+        });
+        break;
+      case "modifiers":
+        note = foundry.utils.mergeObject(protoNote, {
+          text: `${data.modifierValue > 0 ? '+' : ''}${data.modifierValue} ${data.modifierType}`,
+          modifierType: data.modifierType,
+          modifierValue: data.modifierValue,
+        });
+        break;
+      case "resistances":
+        note = foundry.utils.mergeObject(protoNote, {
+          resistanceType: data.resistanceType,
+          resistanceValue: data.resistanceValue,
+          text: `${data.resistanceValue > 0 ? '+' : ''}${data.resistanceValue} ${data.resistanceType} Resistance`,
+        });
+        break;
+      case "manual":
+        note = foundry.utils.mergeObject(protoNote, {
+          text: data.manualCondition,
+        });
+        break;
+    }
   }
 
   get tokenDocuments() { return this.tokens.map(token => token.document); }
@@ -49,9 +93,6 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     notes: {
       template: "modules/too-many-modifiers/parts/notes-table.hbs",
     },
-    // tabs: {
-    //   template: "modules/too-many-modifiers/parts/type-select.hbs",
-    // },
     tabs: {
       template: 'templates/generic/tab-navigation.hbs',
     },
@@ -201,5 +242,13 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     super._onClickTab(event);
+  }
+
+  _getCombatantIfEoT(duration) {
+    if (duration?.startsWith("EoT ")) {
+      const combatantName = duration.replace("EoT ", "");
+      const combatant = this.combat?.combatants.find(c => c.name === combatantName);
+      return combatant?.id;
+    }
   }
 }
