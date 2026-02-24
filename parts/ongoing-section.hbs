@@ -1,4 +1,4 @@
-<div id="ongoingSection" style="display: none;">
+<div>
   <div style="margin-bottom: 15px; display: flex; gap: 10px;">
     <div style="width: 50%;">
       <label>Type:</label>
@@ -12,21 +12,6 @@
     <div style="width: 50%;">
       <label>Damage:</label>
       <input type="number" id="ongoingDamage" style="width: 100%; padding: 5px;" placeholder="Enter damage amount">
-    </div>
-  </div>
-  <div style="margin-bottom: 15px; display: flex; gap: 10px;">
-    <div style="width: 50%;">
-      <label>Duration:</label>
-      <select id="ongoingDuration" style="width: 100%; padding: 5px;">
-        <option value="">Select duration...</option>
-        {{#each durationOptions as |opt|}}
-        <option value="{{opt.value}}">{{opt.label}}</option>
-        {{/each}}
-      </select>
-    </div>
-    <div style="width: 50%;">
-      <label>Duration Overwrite:</label>
-      <input type="text" id="ongoingDurationOverwrite" style="width: 100%; padding: 5px;" placeholder="Enter custom duration">
     </div>
   </div>
 </div>

@@ -91,17 +91,16 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /** @override */
   _replaceHTML(result, content, options) {
-    // Remove any part elements that are NOT in the current render set.
-    // HandlebarsApplicationMixin only replaces/inserts parts it renders,
-    // but never removes old ones — so stale parts accumulate in the DOM.
     const validParts = new Set(options.parts);
-    const allPartEls = this.element?.querySelectorAll("[data-application-part]") ?? [];
-    for (const el of allPartEls) {
-      const partName = el.dataset.applicationPart;
-      if (!validParts.has(partName)) {
+
+    // Remove all existing part elements not in the current render set.
+    for (const el of [...this.element.querySelectorAll("[data-application-part]")]) {
+      if (!validParts.has(el.dataset.applicationPart)) {
         el.remove();
       }
     }
+
+    // Let the parent insert/replace rendered parts.
     super._replaceHTML(result, content, options);
   }
 
@@ -157,8 +156,6 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   getNotes() {
-    console.error(this.tokens);
-    console.error(this.tokenDocuments);
 
     // Only include notes that are present on every selected token (match by text+duration)
     const primaryNotes = this.tokenDocuments[0].getFlag(MODULE_ID, "notes") || [];
