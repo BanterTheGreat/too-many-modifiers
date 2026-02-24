@@ -27,3 +27,11 @@
   border-bottom: 2px solid #40403a;
   margin-bottom: -2px;
 }
+
+.tmm-tab-conditions,
+.tmm-tab-ongoing,
+.tmm-tab-modifiers,
+.tmm-tab-resistances,
+.tmm-tab-manual {
+  margin-top: 10px;
+}

@@ -8,12 +8,15 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     const options = {
       window: {
         title: `Editing tracking for ${tokens.length > 1 ? `${tokens.length} tokens` : `"${tokens[0].document.name}"`}`
+      },
+      position: {
+        height: "auto",
+        width: 400,
       }
     };
 
     super(options);
     this.tokens = tokens;
-    this.uiState = "modifiers";
   }
 
   static DEFAULT_OPTIONS = {
@@ -26,7 +29,6 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     },
     classes: [],
     actions: {
-      switchTab: TrackingDialog.#onSwitchTab,
     }
   }
 
@@ -45,8 +47,11 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     notes: {
       template: "modules/too-many-modifiers/parts/notes-table.hbs",
     },
+    // tabs: {
+    //   template: "modules/too-many-modifiers/parts/type-select.hbs",
+    // },
     tabs: {
-      template: "modules/too-many-modifiers/parts/type-select.hbs",
+      template: 'templates/generic/tab-navigation.hbs',
     },
     conditions: {
       template: "modules/too-many-modifiers/parts/condition-section.hbs",
@@ -71,22 +76,11 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     },
   }
 
-  /** @override */
-  _configureRenderOptions(options) {
-    // This fills in `options.parts` with an array of ALL part keys by default
-    // So we need to call `super` first
-    super._configureRenderOptions(options);
-    // Completely overriding the parts
-    options.parts = [];
-
-    if (this.getNotes().length > 0) {
-      options.parts.push("notes");
+  static TABS = {
+    primary: {
+      tabs: [{ id: 'conditions', label: "Conditions" }, { id: 'ongoing', label: "Ongoing" }, { id: 'modifiers', label: "Modifiers" }, { id: 'resistances', label: "Resistances" }, { id: 'manual', label: "Manual" }],
+      initial: 'modifiers',
     }
-
-    options.parts.push("tabs");
-    options.parts.push(this.uiState);
-    options.parts.push("duration");
-    options.parts.push("footer");
   }
 
   /** @override */
@@ -105,7 +99,6 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   async _prepareContext(options) {
-    const context = await super._prepareContext(options);
 
     // Duration options
     const durationOptions = [
@@ -133,26 +126,30 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       return { value: key, label };
     });
 
-    return foundry.utils.mergeObject(context, {
+    return {
       notes: [...this.getNotes()],
       durations: durationOptions,
       conditions: conditionOptions,
       damageTypes: damageTypeOptions,
-      activeTab: this.uiState,
+      tabs: this._prepareTabs("primary"),
 
       // Footer
       buttons: [
         { type: "submit", icon: "fa-solid fa-save", label: "SETTINGS.Save" },
       ],
-    });
+    };
   }
 
-  static #onSwitchTab(event, target) {
-    const tab = target.dataset.tab;
-    if (tab && tab !== this.uiState) {
-      this.uiState = tab;
-      this.render();
+  async _preparePartContext(partId, context) {
+    const tab = context.tabs?.[partId];
+    if (tab) {
+      context.tab = { ...tab };
+      // Set active class for initial tab
+      if (partId === "modifiers") {
+        context.tab.cssClass = "active";
+      }
     }
+    return context;
   }
 
   getNotes() {
@@ -174,5 +171,20 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     return [];
+  }
+
+  async _preparePartContext(partId, context) {
+    console.error(partId);
+    switch (partId) {
+      case 'conditions':
+      case 'modifiers':
+      case 'resistances':
+      case 'ongoing':
+      case 'manual':
+        context.tab = context.tabs[partId];
+        break;
+      default:
+    }
+    return context;
   }
 }
