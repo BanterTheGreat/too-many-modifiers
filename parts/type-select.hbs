@@ -1,15 +1,38 @@
 <div>
   <h3>Add new tracker</h3>
-  <div style="margin-bottom: 15px;">
-    <label>Tracking Type:</label>
-    <select id="noteType"
-            style="width: 100%; padding: 5px;">
-      <option value="">Select type...</option>
-      <option value="condition">Condition</option>
-      <option value="ongoing">Ongoing</option>
-      <option value="modifier">Modifier</option>
-      <option value="resistances">Resistances</option>
-      <option value="manual">Manual</option>
-    </select>
-  </div>
+  <nav class="tmm-tabs">
+    <a type="button"
+            data-action="switchTab"
+            data-tab="conditions"
+            class="tmm-tab {{#if (eq activeTab 'conditions')}}active{{/if}}">
+      Condition
+    </a>
+    <a type="button"
+            data-action="switchTab"
+            data-tab="ongoing"
+            class="tmm-tab {{#if (eq activeTab 'ongoing')}}active{{/if}}">
+      Ongoing
+    </a>
+    <a type="button"
+            data-action="switchTab"
+            data-tab="modifiers"
+            class="tmm-tab {{#if (eq activeTab 'modifiers')}}active{{/if}}">
+      Modifier
+    </a>
+    <a type="button"
+            data-action="switchTab"
+            data-tab="resistances"
+            class="tmm-tab {{#if (eq activeTab 'resistances')}}active{{/if}}">
+      Resistances
+    </a>
+    <a type="button"
+            data-action="switchTab"
+            data-tab="manual"
+            class="tmm-tab {{#if (eq activeTab 'manual')}}active{{/if}}">
+      Manual
+    </a>
+  </nav>
+  <input type="hidden"
+         id="noteType"
+         value="{{activeTab}}">
 </div>

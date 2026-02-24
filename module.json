@@ -9,6 +9,7 @@
         }
     ],
 	"esmodules": ["notes-display.js", "main.js"],
+	"styles": ["styles/tracking-dialog.css"],
 	"compatibility": {
 		"minimum": "12",
 		"verified": "12"

@@ -13,14 +13,27 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
 
     super(options);
     this.tokens = tokens;
+    this.uiState = "modifiers";
   }
 
   static DEFAULT_OPTIONS = {
     id: "too-much-too-track-dialog",
     tag: "form",
+    form: {
+      handler: TrackingDialog.onSubmit,
+      submitOnChange: false,
+      closeOnSubmit: true,
+    },
     classes: [],
     actions: {
+      switchTab: TrackingDialog.#onSwitchTab,
     }
+  }
+
+  static async onSubmit(event, form, formData) {
+    console.error(event);
+    console.error(form);
+    console.error(formData);
   }
 
   get tokenDocuments() { return this.tokens.map(token => token.document); }
@@ -29,27 +42,67 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   get combat() { return game.combats.find(c => c.combatants.some(combatant => combatant.actor?.id === this.tokenDocuments[0].actor?.id)); }
 
   static PARTS = {
-    notesTable: {
-      template: "modules/too-many-modifiers/parts/tracking-notes-table.hbs",
+    notes: {
+      template: "modules/too-many-modifiers/parts/notes-table.hbs",
     },
-    typeSelect: {
-      template: "modules/too-many-modifiers/parts/tracking-type-select.hbs",
+    tabs: {
+      template: "modules/too-many-modifiers/parts/type-select.hbs",
     },
-    conditionSection: {
-      template: "modules/too-many-modifiers/parts/tracking-condition-section.hbs",
+    conditions: {
+      template: "modules/too-many-modifiers/parts/condition-section.hbs",
     },
-    ongoingSection: {
-      template: "modules/too-many-modifiers/parts/tracking-ongoing-section.hbs",
+    ongoing: {
+      template: "modules/too-many-modifiers/parts/ongoing-section.hbs",
     },
-    modifierSection: {
-      template: "modules/too-many-modifiers/parts/tracking-modifier-section.hbs",
+    modifiers: {
+      template: "modules/too-many-modifiers/parts/modifier-section.hbs",
     },
-    resistancesSection: {
-      template: "modules/too-many-modifiers/parts/tracking-resistances-section.hbs",
+    resistances: {
+      template: "modules/too-many-modifiers/parts/resistances-section.hbs",
     },
-    manualSection: {
-      template: "modules/too-many-modifiers/parts/tracking-manual-section.hbs",
+    manual: {
+      template: "modules/too-many-modifiers/parts/manual-section.hbs",
     },
+    duration: {
+      template: "modules/too-many-modifiers/parts/duration-section.hbs",
+    },
+    footer: {
+      template: "templates/generic/form-footer.hbs",
+    },
+  }
+
+  /** @override */
+  _configureRenderOptions(options) {
+    // This fills in `options.parts` with an array of ALL part keys by default
+    // So we need to call `super` first
+    super._configureRenderOptions(options);
+    // Completely overriding the parts
+    options.parts = [];
+
+    if (this.getNotes().length > 0) {
+      options.parts.push("notes");
+    }
+
+    options.parts.push("tabs");
+    options.parts.push(this.uiState);
+    options.parts.push("duration");
+    options.parts.push("footer");
+  }
+
+  /** @override */
+  _replaceHTML(result, content, options) {
+    // Remove any part elements that are NOT in the current render set.
+    // HandlebarsApplicationMixin only replaces/inserts parts it renders,
+    // but never removes old ones — so stale parts accumulate in the DOM.
+    const validParts = new Set(options.parts);
+    const allPartEls = this.element?.querySelectorAll("[data-application-part]") ?? [];
+    for (const el of allPartEls) {
+      const partName = el.dataset.applicationPart;
+      if (!validParts.has(partName)) {
+        el.remove();
+      }
+    }
+    super._replaceHTML(result, content, options);
   }
 
   async _prepareContext(options) {
@@ -83,10 +136,24 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
 
     return foundry.utils.mergeObject(context, {
       notes: [...this.getNotes()],
-      durationOptions,
-      conditionOptions,
-      damageTypeOptions,
+      durations: durationOptions,
+      conditions: conditionOptions,
+      damageTypes: damageTypeOptions,
+      activeTab: this.uiState,
+
+      // Footer
+      buttons: [
+        { type: "submit", icon: "fa-solid fa-save", label: "SETTINGS.Save" },
+      ],
     });
+  }
+
+  static #onSwitchTab(event, target) {
+    const tab = target.dataset.tab;
+    if (tab && tab !== this.uiState) {
+      this.uiState = tab;
+      this.render();
+    }
   }
 
   getNotes() {
