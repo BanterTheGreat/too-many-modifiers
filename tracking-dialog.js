@@ -4,6 +4,8 @@ import { Constants } from "./constants.js";
 import { MODULE_ID } from "./main.js";
 import { TrackingHelper } from "./tracking-helper.js";
 
+import { ModifierNoteHandler } from "./handlers/modifier.js";
+
 export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   constructor(tokens) {
     const options = {
@@ -52,6 +54,8 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       type: this.currentTab,
     };
 
+    let noteHandler;
+
     switch (this.currentTab) {
       case "conditions":
         note = await this._createConditionNote(data, protoNote);
@@ -60,7 +64,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         note = await this._createOngoingNote(data, protoNote);
         break;
       case "modifiers":
-        note = await this._createModifierNote(data, protoNote);
+        noteHandler = new ModifierNoteHandler(data, protoNote);
         break;
       case "resistances":
         note = await this._createResistanceNote(data, protoNote);
@@ -69,6 +73,8 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         note = await this._createManualNote(data, protoNote);
         break;
     }
+
+    note = noteHandler.create();
 
     return;
 
