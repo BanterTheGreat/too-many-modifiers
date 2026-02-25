@@ -36,7 +36,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     form: {
       handler: TrackingDialog.onSubmit,
       submitOnChange: false,
-      closeOnSubmit: true,
+      closeOnSubmit: false,
     },
     classes: [],
     actions: {
@@ -44,6 +44,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   static async onSubmit(event, form, formData) {
+    const action = event.submitter.dataset.type;
     const data = formData.object;
     const duration = data.durationOverride || data.duration;
     const combatantId = this._getCombatantIfEoT(duration);
@@ -91,9 +92,15 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       await tokenDoc.setFlag(MODULE_ID, "notes", verifiedNotes);
       await TrackingHelper.deleteNotesAndEffects(tokenDoc, notesToRemove);
     }
+
+    if (action === "saveAndClose") {
+      this.close();
+    } else {
+      this.render();
+    }
   }
 
-  get tokenDocuments() { return this.tokens.map(token => token.document); }
+    get tokenDocuments() { return this.tokens.map(token => token.document); }
 
   static PARTS = {
     tabs: { template: 'templates/generic/tab-navigation.hbs' },
@@ -104,7 +111,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     resistances: { template: "modules/too-many-modifiers/parts/resistances-section.hbs" },
     manual: { template: "modules/too-many-modifiers/parts/manual-section.hbs" },
     duration: { template: "modules/too-many-modifiers/parts/duration-section.hbs" },
-    footer: { template: "templates/generic/form-footer.hbs" },
+    footer: { template: "modules/too-many-modifiers/parts/footer.hbs" },
   }
 
   static TABS = {
@@ -162,11 +169,6 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       conditions: conditionOptions,
       damageTypes: damageTypeOptions,
       tabs: this._prepareTabs("primary"),
-
-      // Footer
-      buttons: [
-        { type: "submit", icon: "fa-solid fa-save", label: "SETTINGS.Save" },
-      ],
     };
   }
 

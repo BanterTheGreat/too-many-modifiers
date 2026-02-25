@@ -13,13 +13,10 @@ export class CombatManager {
 
       if (!Array.isArray(notesArray)) return;
 
-      // Find notes to remove
-      const notesToRemove = notesArray.filter(note => note.duration === Constants.DURATION_ENCOUNTER);
-
-      // Process removed notes
-      if (notesToRemove.length > 0) {
-        await TrackingHelper.deleteNotesAndEffects(token, notesToRemove);
-        CombatManager._createRemovedNotesMessage(token.name, notesToRemove);
+      // Remove all notes and effects since combat is being deleted
+      if (notesArray.length > 0) {
+        await TrackingHelper.deleteNotesAndEffects(token, notesArray);
+        CombatManager._createRemovedNotesMessage(token.name, notesArray);
       }
     });
   }

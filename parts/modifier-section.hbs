@@ -2,7 +2,7 @@
          data-group="primary"
          data-tab="modifiers">
   <div style="margin-bottom: 15px; display: flex; gap: 10px;">
-    <div style="width: 45%;">
+    <div style="width: 50%;">
       <label>Effect Origin:</label>
       <select id="origin"
               name="origin"
@@ -17,7 +17,34 @@
         {{/each}}
       </select>
     </div>
-    <div style="width: 30%;">
+
+    <div style="width: 15%;">
+      <label>+/-</label>
+      <select id="isNegativeModifier"
+              name="isNegativeModifier"
+              style="padding: 5px;">
+        <option value="false">+</option>
+        <option value="true">-</option>
+      </select>
+    </div>
+
+    <div style="width: 35%;">
+      <label>Ability Score:</label>
+      <select id="scoreValue"
+              name="scoreValue"
+              style="padding: 5px;">
+        <option>Select...</option>
+        <option value="strength">Strength</option>
+        <option value="dexterity">Dexterity</option>
+        <option value="constitution">Constitution</option>
+        <option value="intelligence">Intelligence</option>
+        <option value="wisdom">Wisdom</option>
+        <option value="charisma">Charisma</option>
+      </select>
+    </div>
+  </div>
+  <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+    <div style="width: 25%;">
       <label>Modifies:</label>
       <select id="modifierType"
               name="modifierType"
@@ -26,8 +53,8 @@
         <option value="ac">AC</option>
         <option value="attacks">Attacks</option>
         <option value="damage">Damage</option>
-        <option value="defenses">Defenses</option>
-        <option value="savingThrows">Saving Throws</option>
+        <option value="defenses">Defenses (BROKEN)</option>
+        <option value="savingThrows">Saves</option>
         <option value="speed">Speed</option>
       </select>
     </div>
@@ -42,34 +69,8 @@
         <option value="untyped">Untyped</option>
       </select>
     </div>
-  </div>
-  <div style="margin-bottom: 15px; display: flex; gap: 10px;">
-    <div style="width: 15%;">
-      <label>+/-</label>
-      <select id="isNegativeModifier"
-              name="isNegativeModifier"
-              style="padding: 5px;">
-        <option value="false">+</option>
-        <option value="true">-</option>
-      </select>
-    </div>
 
     <div style="width: 50%;">
-      <label>Ability Score:</label>
-      <select id="scoreValue"
-              name="scoreValue"
-              style="padding: 5px;">
-        <option>Select...</option>
-        <option value="strength">Strength</option>
-        <option value="dexterity">Dexterity</option>
-        <option value="constitution">Constitution</option>
-        <option value="intelligence">Intelligence</option>
-        <option value="wisdom">Wisdom</option>
-        <option value="charisma">Charisma</option>
-      </select>
-    </div>
-
-    <div style="width: 35%;">
       <label>Number Override:</label>
       <input type="number"
              id="numberValue"
@@ -78,6 +79,6 @@
              placeholder="Enter value">
     </div>
   </div>
-  <p>If you select a number it overwrites the ability score and penalty toggle.</p>
+  <p>If you select a number it overwrites the ability score.</p>
 
 </section>
