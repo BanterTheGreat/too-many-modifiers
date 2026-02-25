@@ -47,10 +47,11 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     const data = formData.object;
     const duration = data.durationOverride || data.duration;
     const combatantId = this._getCombatantIfEoT(duration);
+    const userFriendlyDuration = TrackingHelper.getUserFriendlyDuration(duration, this.combat);
     var note = null;
 
     const protoNote = {
-      duration: duration,
+      duration: userFriendlyDuration,
       id: `tmtt-${foundry.utils.randomID()}`,
       combatantId: combatantId,
       round: this.combat?.round,
@@ -234,7 +235,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   _getCombatantIfEoT(duration) {
     if (duration?.startsWith("EoT ")) {
       const combatantName = duration.replace("EoT ", "");
-      const combatant = this.combat?.combatants.find(c => c.name === combatantName);
+      const combatant = this.combat?.combatants.find(c => c.tokenId === combatantName);
       return combatant?.id;
     }
   }
