@@ -82,6 +82,7 @@ export class TrackingHelper {
   }
 
   static formatNotesForDisplay(notes) {
+    console.error(notes);
     if (!Array.isArray(notes)) {
       return undefined;
     }

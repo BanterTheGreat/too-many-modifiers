@@ -4,10 +4,10 @@ import { TrackingDialog } from "./tracking-dialog.js";
 
 export const MODULE_ID = "too-many-modifiers";
 
-Hooks.on("refreshToken", TrackingOverlay.refreshToken);
-Hooks.on("updateActor", TrackingOverlay.onUpdateActor);
 Hooks.on("canvasReady", TrackingOverlay.onCanvasReady);
+Hooks.on("refreshToken", TrackingOverlay.refreshToken);
 Hooks.on("updateToken", TrackingOverlay.onUpdateToken);
+Hooks.on("updateActor", TrackingOverlay.onUpdateActor);
 
 Hooks.on("combatRound", CombatManager.onCombatRound);
 Hooks.on("combatTurnChange", CombatManager.onCombatTurnChange);

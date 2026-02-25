@@ -1,6 +1,19 @@
+import { MODULE_ID } from "./main.js";
 import { TrackingHelper } from "./tracking-helper.js";
 
 export class TrackingOverlay {
+  static get gridScale() {
+    return canvas.scene.dimensions.size / 100;
+  }
+
+  static get fontSize() {
+    return 18;
+  }
+
+  static get scaledFontSize() {
+    return (TrackingOverlay.fontSize * TrackingOverlay.gridScale) * 4;
+  }
+
   static refreshToken(token, flags) {
     TrackingOverlay.handleOverlay(token, token.hover);
   }
@@ -19,7 +32,7 @@ export class TrackingOverlay {
   }
 
   static onUpdateToken(token, data, options, userId) {
-    if (data?.flags && data.flags["too-many-modifiers"]) {
+    if (data?.flags && data.flags[MODULE_ID]) {
       // Get all the tokens because there can be two tokens of the same linked actor.
       const tokens = canvas.tokens?.placeables.filter((canvasToken) => canvasToken?.actor?.id === token.actorId);
       // Call the _handleOverlay method for each token.
@@ -32,13 +45,13 @@ export class TrackingOverlay {
     try {
       // We hide the note while hovering over a token.
       const { desc, color, stroke } = {
-        desc: TrackingHelper.formatNotesForDisplay(token?.document.flags["too-many-modifiers"]?.notes ?? []),
+        desc: TrackingHelper.formatNotesForDisplay(token?.document.flags[MODULE_ID]?.notes ?? []),
         color: "#ffffff",
         stroke: "#000000"
       };
       if (desc !== undefined && color && stroke) {
         const { width } = token.document.getSize();
-        const y = -2 + (35 * this.gridScale); // 25 = this.height;
+        const y = -2 + (35 * TrackingOverlay.gridScale); // 25 = this.height;
         const position = 2;
         const x = (width / 2) * position;
         const config = { desc, color, stroke, width, x, y };
@@ -61,7 +74,7 @@ export class TrackingOverlay {
     const padding = 5;
     const style = {
       // Multiply font size to increase resolution quality
-      fontSize: this.scaledFontSize,
+      fontSize: TrackingOverlay.scaledFontSize,
       fontFamily: "Signika",
       fill: color,
       stroke: stroke,
@@ -78,19 +91,21 @@ export class TrackingOverlay {
     token.notesDisplay.anchor.set(0.5, 1);
 
     var lineCount = desc.split("\n").length - 1;
-    token.notesDisplay.position.set(width / 2, x + y + (lineCount * ((this.fontSize * this.gridScale) + padding)) + (hovering ? 24 : 0));
+    token.notesDisplay.position.set(width / 2, x + y + (lineCount * ((TrackingOverlay.fontSize * TrackingOverlay.gridScale) + padding)) + (hovering ? 24 : 0));
+    console.error(config);
   }
 
   static updateNotesDisplay(token, config = {}, hovering = false) {
     const { desc, color, stroke, width, x, y } = config;
     const padding = 5;
-    token.notesDisplay.style.fontSize = this.scaledFontSize;
+    token.notesDisplay.style.fontSize = TrackingOverlay.scaledFontSize;
     token.notesDisplay.text = desc;
     token.notesDisplay.style.fill = color;
     token.notesDisplay.style.stroke = stroke;
     token.notesDisplay.visible = true;
 
     var lineCount = desc.split("\n").length - 1;
-    token.notesDisplay.position.set(width / 2, x + y + (lineCount * ((this.fontSize * this.gridScale) + padding)) + (hovering ? 24 : 0));
+    token.notesDisplay.position.set(width / 2, x + y + (lineCount * ((TrackingOverlay.fontSize * TrackingOverlay.gridScale) + padding)) + (hovering ? 24 : 0));
+    console.error(config);
   }
 }

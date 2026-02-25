@@ -35,3 +35,14 @@
 .tmm-tab-manual {
   margin-top: 10px;
 }
+
+.tmm-notes-table-header {
+  padding: 5px;
+  border: 1px solid #ccc;
+  text-align: left;
+}
+
+.tmm-notes-table-entry {
+  padding: 5px;
+  border: 1px solid #ccc;
+}

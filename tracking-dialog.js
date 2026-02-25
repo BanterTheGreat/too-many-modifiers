@@ -39,12 +39,16 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     const duration = data.durationOverride || data.duration;
     const combatantId = this._getCombatantIfEoT(duration);
     var note = null;
+    const _getEffectName = (text) => MODULE_ID + "-" + text;
+
+
 
     const protoNote = {
       duration: duration,
       combatantId: combatantId,
       round: this.combat?.round,
       turn: this.combat?.turn,
+      type: this.currentTab,
     };
 
     switch (this.currentTab) {
@@ -53,6 +57,27 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
           condition: data.condition,
           text: data.condition,
         });
+
+        const conditionEffect = CONFIG.statusEffects.find(statusEffect => statusEffect.name === data.condition);
+        if (conditionEffect) {
+          for (const tokenDoc of this.tokenDocuments) {
+            await tokenDoc.actor.createEmbeddedDocuments("ActiveEffect", [{
+              icon: conditionEffect.img,
+              name: conditionEffect.name,
+              statuses: new Set([conditionEffect.id]),
+              flags: {
+                dnd4e: {
+                  effectData: {
+                    // Neccessary to prevent a null reference in the dnd4e system.
+                    durationType: "custom",
+                  }
+                }
+              }
+            }]);
+          }
+        } else {
+          ui.notifications.warn(`Condition "${data.condition}" not found in CONFIG.statusEffects. Please ensure the condition exists and has a name property.`);
+        }
         break;
       case "ongoing":
         note = foundry.utils.mergeObject(protoNote, {
@@ -81,6 +106,21 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         });
         break;
     }
+
+    for (const tokenDoc of this.tokenDocuments) {
+      console.error(tokenDoc);
+      const existingNotes = tokenDoc.getFlag(MODULE_ID, "notes") || [];
+      let verifiedNotes = Array.isArray(existingNotes) ? [...existingNotes] : [];
+
+      // TODO: Remove the checked notes here.
+
+      verifiedNotes.push(note);
+      console.error(note);
+      await tokenDoc.setFlag(MODULE_ID, "notes", verifiedNotes);
+
+      // TODO: Remove effects of checked notes.
+      // await TrackingHelper.removeAdditionalNoteEffects(token);
+    }
   }
 
   get tokenDocuments() { return this.tokens.map(token => token.document); }
@@ -90,29 +130,15 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   get currentCombatant() { return this.combat?.combatants; }
 
   static PARTS = {
+    tabs: { template: 'templates/generic/tab-navigation.hbs' },
     notes: { template: "modules/too-many-modifiers/parts/notes-table.hbs" },
-  tabs: {   template: 'templates/generic/tab-navigation.hbs',
-    conditions: {
-      template: "modules/too-many-modifiers/parts/condition-section.hbs",
-    },
-    ongoing: {
-      template: "modules/too-many-modifiers/parts/ongoing-section.hbs",
-    },
-    modifiers: {
-      template: "modules/too-many-modifiers/parts/modifier-section.hbs",
-    },
-    resistances: {
-      template: "modules/too-many-modifiers/parts/resistances-section.hbs",
-    },
-    manual: {
-      template: "modules/too-many-modifiers/parts/manual-section.hbs",
-    },
-    duration: {
-      template: "modules/too-many-modifiers/parts/duration-section.hbs",
-    },
-    footer: {
-      template: "templates/generic/form-footer.hbs",
-    },
+    conditions: { template: "modules/too-many-modifiers/parts/condition-section.hbs" },
+    ongoing: { template: "modules/too-many-modifiers/parts/ongoing-section.hbs" },
+    modifiers: { template: "modules/too-many-modifiers/parts/modifier-section.hbs" },
+    resistances: { template: "modules/too-many-modifiers/parts/resistances-section.hbs" },
+    manual: { template: "modules/too-many-modifiers/parts/manual-section.hbs" },
+    duration: { template: "modules/too-many-modifiers/parts/duration-section.hbs" },
+    footer: { template: "templates/generic/form-footer.hbs" },
   }
 
   static TABS = {
@@ -120,21 +146,6 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       tabs: [{ id: 'conditions', label: "Conditions" }, { id: 'ongoing', label: "Ongoing" }, { id: 'modifiers', label: "Modifiers" }, { id: 'resistances', label: "Resistances" }, { id: 'manual', label: "Manual" }],
       initial: 'modifiers',
     }
-  }
-
-  /** @override */
-  _replaceHTML(result, content, options) {
-    const validParts = new Set(options.parts);
-
-    // Remove all existing part elements not in the current render set.
-    for (const el of [...this.element.querySelectorAll("[data-application-part]")]) {
-      if (!validParts.has(el.dataset.applicationPart)) {
-        el.remove();
-      }
-    }
-
-    // Let the parent insert/replace rendered parts.
-    super._replaceHTML(result, content, options);
   }
 
   async _prepareContext(options) {
@@ -216,7 +227,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       });
     }
 
-    return [];
+    return notesArray;
   }
 
   _onClickTab(event) {
@@ -230,6 +241,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         durationSelect.value = Constants.DURATION_SAVE;
       } else {
         const currentCombatant = this.combat?.combatant;
+        console.error(currentCombatant);
         if (currentCombatant) {
           const duration = TrackingHelper.getCombatantDuration(currentCombatant);
           durationSelect.value = duration.value;
