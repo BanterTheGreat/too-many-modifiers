@@ -10,40 +10,57 @@ export class ModifierNoteHandler {
     if (!this.data.modifierType || (!this.data.scoreValue && !this.data.numberValue)) return;
 
     const modifierValue = this._getModifierValue();
+    const changeKey = this._getChangeKey();
 
-    // Create the effect.
-    
+    if (!changeKey || !modifierValue) {
+      ui.notifications.warn("Unsupported modifier type or zero modifier value. Modifier note will not be created.");
+      return;
+    };
+
+    const noteText = `${modifierValue > 0 ? '+' : ''}${modifierValue} ${this.data.modifierType} (${this.data.modifierBonusType})`;
+
+    // Create the effects.
+    for (const tokenDoc of this.documents) {
+      await tokenDoc.actor.createEmbeddedDocuments("ActiveEffect", [{
+        name: this.protoNote.id,
+        changes: [
+          // Effect Modes
+          // 0: Custom
+          // 1: Multiply
+          // 2: Add
+          // 3: Downgrade
+          // 4: Upgrade
+          // 5: Override
+          {
+            key: changeKey,
+            mode: this.data.modifierBonusType === 'untyped' ? 2 : 4, // They should not stack if we got an type.
+            value: modifierValue,
+          }
+        ],
+        flags: {
+          dnd4e: {
+            effectData: {
+              // Necessary to prevent a null reference in the dnd4e system.
+              durationType: "custom",
+            }
+          }
+        }
+      }]);
+    }
 
     return foundry.utils.mergeObject(this.protoNote, {
-      text: `${modifierValue > 0 ? '+' : ''}${modifierValue} ${this.data.modifierType} (${this.data.modifierBonusType})`,
+      text: noteText,
       modifierType: this.data.modifierType,
       modifierValue: modifierValue,
     });
   }
 
-  async clean(token, note) {
-    if (!token?.actor) return;
+  async clean(actor, note) {
+    if (!actor) return;
 
-    const actor = token.actor;
-    const modifierType = note.modifierType;
-    const bonusName = `too-many-modifiers: ${note.text}`;
-    if (!modifierType) return;
-
-    const modifierPaths = {
-      'AC': 'system.defences.ac.bonus',
-      'Speed': 'system.movement.base.bonus',
-      'Damage': 'system.modifiers.damage.bonus',
-      'Saving Throws': 'system.details.saves.bonus',
-      'Attacks': 'system.modifiers.attack.bonus',
-    };
-
-    const path = modifierPaths[modifierType];
-    if (path) {
-      const bonus = foundry.utils.getProperty(actor, path) || [];
-      const updatedBonus = bonus.filter(b => b.name !== bonusName);
-      await actor.update({ [path]: updatedBonus });
-    } else {
-      ui.notifications.warn(`Modifier type "${modifierType}" is not supported yet.`);
+    const effect = actor.effects.find(e => e.name === note.id);
+    if (effect) {
+      await effect.delete();
     }
   }
 
@@ -79,5 +96,21 @@ export class ModifierNoteHandler {
     } else {
       return this.data.numberValue;
     }
+  }
+
+  _getChangeKey() {
+    const modifierPaths = {
+      "ac": "system.defences.ac",
+      "speed": "system.movement.base",
+      "damage": "system.modifiers.damage",
+      "savingThrows": "system.details.saves",
+      "attacks": "system.modifiers.attack",
+    };
+
+    const basePath = modifierPaths[this.data.modifierType];
+
+    if (!basePath) return;
+
+    return basePath + `.${this.data.modifierBonusType}`;
   }
 }

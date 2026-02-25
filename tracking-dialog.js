@@ -62,7 +62,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       conditions: new ConditionNoteHandler(data, protoNote, this.tokenDocuments),
       ongoing: new OngoingNoteHandler(data, protoNote),
       modifiers: new ModifierNoteHandler(data, protoNote, this.tokenDocuments, this.combat),
-      resistances: new ResistanceNoteHandler(data, protoNote),
+      resistances: new ResistanceNoteHandler(data, protoNote, this.tokenDocuments),
       manual: new ManualNoteHandler(data, protoNote),
     };
 
@@ -93,7 +93,9 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       for (const removedNote of removedNotes) {
         const handler = handlers[removedNote.type];
         if (handler) {
-          await handler.clean(tokenDoc.object, removedNote);
+          await handler.clean(tokenDoc.actor, removedNote);
+        } else {
+          ui.notifications.warn(`No handler found for removed note type "${removedNote.type}". Please ensure the type is correct and a handler exists.`);
         }
       }
     }

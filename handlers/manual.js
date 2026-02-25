@@ -13,6 +13,7 @@ export class ManualNoteHandler {
   }
 
   async clean() {
+    // Has no effects to clean up.
     return;
   }
 }

@@ -35,11 +35,10 @@ export class ConditionNoteHandler {
     });
   }
 
-  async clean(token, note) {
-    if (!token?.actor) return;
-
+  async clean(actor, note) {
+    if (!actor) return;
     const conditionName = note.text;
-    const effect = token.actor.effects.find(e => e.name === conditionName);
+    const effect = actor.effects.find(e => e.name === conditionName);
     if (effect) {
       await effect.delete();
     }

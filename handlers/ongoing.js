@@ -15,6 +15,7 @@ export class OngoingNoteHandler {
   }
 
   async clean() {
+    // Has no effects to clean up.
     return;
   }
 }
