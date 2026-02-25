@@ -90,12 +90,8 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   get currentCombatant() { return this.combat?.combatants; }
 
   static PARTS = {
-    notes: {
-      template: "modules/too-many-modifiers/parts/notes-table.hbs",
-    },
-    tabs: {
-      template: 'templates/generic/tab-navigation.hbs',
-    },
+    notes: { template: "modules/too-many-modifiers/parts/notes-table.hbs" },
+  tabs: {   template: 'templates/generic/tab-navigation.hbs',
     conditions: {
       template: "modules/too-many-modifiers/parts/condition-section.hbs",
     },
