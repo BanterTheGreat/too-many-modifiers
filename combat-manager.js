@@ -1,4 +1,4 @@
-import { Constants } from "./constants.js";
+import { Constants, MODULE_ID } from "./constants.js";
 import { TrackingHelper } from "./tracking-helper.js";
 
 export class CombatManager {
@@ -9,71 +9,51 @@ export class CombatManager {
       const token = combatant.token;
       if (!token) return;
 
-      let notesArray = token.getFlag("too-many-modifiers", "notes") || [];
+      let notesArray = token.getFlag(MODULE_ID, "notes") || [];
 
       if (!Array.isArray(notesArray)) return;
 
       // Find notes to remove
-      const removedNotes = [];
-      const updatedNotesArray = notesArray.filter(note => {
-        if (note.duration === Constants.DURATION_ENCOUNTER) {
-          removedNotes.push(note);
-          return false; // Remove this note
-        }
-        return true; // Keep this note
-      });
+      const notesToRemove = notesArray.filter(note => note.duration === Constants.DURATION_ENCOUNTER);
 
-      // Update the flag if notes were removed
-      if (updatedNotesArray.length !== notesArray.length) {
-        // Remove corresponding active effects
-        await TrackingHelper.deleteNotesAndEffects(token, removedNotes);
-
-        // Create chat message with removed notes
-        CombatManager._createRemovedNotesMessage(token.name, removedNotes);
+      // Process removed notes
+      if (notesToRemove.length > 0) {
+        await TrackingHelper.deleteNotesAndEffects(token, notesToRemove);
+        CombatManager._createRemovedNotesMessage(token.name, notesToRemove);
       }
     });
   }
 
-  static onCombatRound(combat, roundObject) {
+  static async onCombatRound(combat, roundObject) {
     if (!game.user.isGM) return;
 
     const round = roundObject.round;
 
     // Loop through each combatant
-    combat.combatants.forEach(combatant => {
+    combat.combatants.forEach(async combatant => {
       const token = combatant.token;
       if (!token) return;
 
-      let notesArray = token.getFlag("too-many-modifiers", "notes") || [];
+      let notesArray = token.getFlag(MODULE_ID, "notes") || [];
 
       if (!Array.isArray(notesArray)) return;
 
       // Find notes to remove
-      const removedNotes = [];
-      const updatedNotesArray = notesArray.filter(note => {
-        if (note.duration === Constants.DURATION_ROUND && note.round !== undefined && note.round < round) {
-          removedNotes.push(note);
-          return false; // Remove this note
-        }
-        return true; // Keep this note
-      });
+      const notesToRemove = notesArray.filter(note => note.duration === Constants.DURATION_ROUND && note.round !== undefined && note.round < round);
 
-      // Update the flag if notes were removed
-      if (updatedNotesArray.length !== notesArray.length) {
-        token.setFlag("too-many-modifiers", "notes", updatedNotesArray);
-
+      // Process removed notes
+      if (notesToRemove.length > 0) {
         // Remove corresponding active effects
-        removedNotes.forEach(async note => {
-          await TrackingHelper.removeAdditionalNoteEffects(token, note);
-        });
+          await TrackingHelper.deleteNotesAndEffects(token, notesToRemove);
+
 
         // Create chat message with removed notes
-        CombatManager._createRemovedNotesMessage(token.name, removedNotes);
+        CombatManager._createRemovedNotesMessage(token.name, notesToRemove);
       }
     });
   }
 
-  static onCombatTurnChange(combat, previous, current) {
+  static async onCombatTurnChange(combat, previous, current) {
     if (!game.user.isGM) return;
 
     // Happens at the END of the previous turn.
@@ -90,47 +70,31 @@ export class CombatManager {
     const previousCombatantId = previous.combatantId;
 
     // Loop through each combatant
-    combat.combatants.forEach(combatant => {
+    combat.combatants.forEach(async combatant => {
       const token = combatant.token;
       if (!token) return;
 
-      let notesArray = token.getFlag("too-many-modifiers", "notes") || [];
+      let notesArray = token.getFlag(MODULE_ID, "notes") || [];
 
       if (!Array.isArray(notesArray)) return;
 
       // Find notes to remove
-      const removedNotes = [];
-      const updatedNotesArray = notesArray.filter(note => {
-        // Only process notes that have the same combatantId as the previous combatant
-        if (note.combatantId !== previousCombatantId) {
-          return true; // Keep notes not belonging to previous combatant
-        }
-
+      const removedNotes = notesArray.filter(note => {
+        if (note.combatantId !== previousCombatantId) return false;
+        
         const noteRound = note.round;
         const noteTurn = note.turn;
-
-        // Remove if:
-        // - Previous round is higher than note round, OR
-        // - Previous round equals note round and previous turn is higher than note turn
+        
         if (noteRound !== undefined && noteTurn !== undefined) {
-          if (previousRound > noteRound || (previousRound === noteRound && previousTurn > noteTurn)) {
-            removedNotes.push(note);
-            return false; // Remove this note
-          }
+          return previousRound > noteRound || (previousRound === noteRound && previousTurn > noteTurn);
         }
-
-        return true; // Keep this note
+        return false;
       });
 
-      // Update the flag if notes were removed
-      if (updatedNotesArray.length !== notesArray.length) {
-        token.setFlag("too-many-modifiers", "notes", updatedNotesArray);
-
+      // Process removed notes
+      if (removedNotes.length > 0) {
         // Remove corresponding active effects
-        removedNotes.forEach(async note => {
-          await TrackingHelper.removeAdditionalNoteEffects(token, note);
-        });
-
+        await TrackingHelper.deleteNotesAndEffects(token, removedNotes);
         // Create chat message with removed notes
         CombatManager._createRemovedNotesMessage(token.name, removedNotes);
       }
@@ -170,9 +134,7 @@ export class CombatManager {
 
       // If successful, remove the note immediately
       if (success) {
-        const updatedNotesArray = notesArray.filter(n => n !== note);
-        token.setFlag("too-many-modifiers", "notes", updatedNotesArray);
-        await TrackingHelper.removeAdditionalNoteEffects(token, note);
+        await TrackingHelper.deleteNotesAndEffects(token, [note]);
         CombatManager._createRemovedNotesMessage(token.name, [note]);
       }
     });
