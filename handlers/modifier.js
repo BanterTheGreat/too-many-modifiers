@@ -53,8 +53,6 @@ export class ModifierNoteHandler extends NoteHandler {
 
     return foundry.utils.mergeObject(this.protoNote, {
       text: noteText,
-      modifierType: this.data.modifierType,
-      modifierValue: modifierValue,
     });
   }
 

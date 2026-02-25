@@ -17,6 +17,7 @@ export class ConditionNoteHandler extends NoteHandler {
         await tokenDoc.actor.createEmbeddedDocuments("ActiveEffect", [{
           icon: conditionEffect.img,
           name: conditionEffect.name,
+          description: this.protoNote.id,
           statuses: new Set([conditionEffect.id]),
           flags: {
             dnd4e: {
@@ -27,23 +28,42 @@ export class ConditionNoteHandler extends NoteHandler {
             }
           }
         }]);
+
+        const conditionEffect2 = CONFIG.statusEffects.find(statusEffect => statusEffect.name === this.data.condition2);
+
+        if (conditionEffect2) {
+          await tokenDoc.actor.createEmbeddedDocuments("ActiveEffect", [{
+            icon: conditionEffect2.img,
+            name: conditionEffect2.name,
+            description: this.protoNote.id,
+            statuses: new Set([conditionEffect2.id]),
+            flags: {
+              dnd4e: {
+                effectData: {
+                  // Necessary to prevent a null reference in the dnd4e system.
+                  durationType: "custom",
+                }
+              }
+            }
+          }]);
+        }
       }
     } else {
       ui.notifications.warn(`Condition "${this.data.condition}" not found in CONFIG.statusEffects. Please ensure the condition exists and has a name property.`);
     }
 
     return foundry.utils.mergeObject(this.protoNote, {
-      condition: this.data.condition,
-      text: this.data.condition,
+      text: this.data.condition + (this.data.condition2 ? ` & ${this.data.condition2}` : ''),
     });
   }
 
   async clean(token, note) {
     if (!token?.actor) return;
-    const conditionName = note.text;
-    const effect = token.actor.effects.find(e => e.name === conditionName);
-    if (effect) {
-      await effect.delete();
+    const effects = token.actor.effects.filter(e => e.description === note.id);
+    if (effects.length > 0) {
+      for (const effect of effects) {
+        await effect.delete();
+      }
     }
 
     super.clean(token, note);

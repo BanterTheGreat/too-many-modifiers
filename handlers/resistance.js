@@ -50,8 +50,6 @@ export class ResistanceNoteHandler extends NoteHandler {
     }
 
     return foundry.utils.mergeObject(this.protoNote, {
-      resistanceType: this.data.resistanceType,
-      resistanceValue: this.data.resistanceValue,
       text: `${this.data.resistanceValue > 0 ? '+' : ''}${this.data.resistanceValue} ${this.data.resistanceType} Resistance`,
     });
   }
