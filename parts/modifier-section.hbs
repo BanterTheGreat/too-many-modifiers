@@ -18,7 +18,7 @@
       </select>
     </div>
     <div style="width: 30%;">
-      <label>Modifier:</label>
+      <label>Modifies:</label>
       <select id="modifierType"
               name="modifierType"
               style="padding: 5px;">
@@ -33,8 +33,8 @@
     </div>
     <div style="width: 25%;">
       <label>Type:</label>
-      <select id="bonusType"
-              name="bonusType"
+      <select id="modifierBonusType"
+              name="modifierBonusType"
               style="padding: 5px;">
         <option value="power">Power</option>
         <option value="item">Item</option>
@@ -44,7 +44,15 @@
     </div>
   </div>
   <div style="margin-bottom: 15px; display: flex; gap: 10px;">
-
+    <div style="width: 15%;">
+      <label>+/-</label>
+      <select id="isNegativeModifier"
+              name="isNegativeModifier"
+              style="padding: 5px;">
+        <option value="false">+</option>
+        <option value="true">-</option>
+      </select>
+    </div>
 
     <div style="width: 50%;">
       <label>Ability Score:</label>
@@ -60,14 +68,7 @@
         <option value="charisma">Charisma</option>
       </select>
     </div>
-    <div style="width: 15%;">
-      <label>Penalty?</label>
-      <input type="checkbox"
-             id="isNegativeModifier"
-             name="isNegativeModifier"
-             value="value"
-             style="cursor: pointer;">
-    </div>
+
     <div style="width: 35%;">
       <label>Number Override:</label>
       <input type="number"

@@ -11,8 +11,11 @@ export class ModifierNoteHandler {
 
     const modifierValue = this._getModifierValue();
 
+    // Create the effect.
+    
+
     return foundry.utils.mergeObject(this.protoNote, {
-      text: `${modifierValue > 0 ? '+' : ''}${modifierValue} ${this.data.modifierType}`,
+      text: `${modifierValue > 0 ? '+' : ''}${modifierValue} ${this.data.modifierType} (${this.data.modifierBonusType})`,
       modifierType: this.data.modifierType,
       modifierValue: modifierValue,
     });
@@ -64,13 +67,11 @@ export class ModifierNoteHandler {
 
       let ability = this.data.scoreValue;
 
-      console.error(ability);
       const abilityProperty = abilityMap[ability];
-      console.error(abilityProperty);
       let value = originToken.actor.system.abilities[abilityProperty].mod;
 
       // We checked that it is a penalty. Turn the value negative.
-      if (value > 0 && this.data.isNegativeModifier) {
+      if (value > 0 && this.data.isNegativeModifier === "true") {
         value = -value;
       }
 

@@ -51,7 +51,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
 
     const protoNote = {
       duration: duration,
-      id: foundry.utils.randomID(),
+      id: `tmtt-${foundry.utils.randomID()}`,
       combatantId: combatantId,
       round: this.combat?.round,
       turn: this.combat?.turn,
