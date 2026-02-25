@@ -14,7 +14,7 @@
       {{#each notes as |note|}}
       <tr>
         <td class="tmm-notes-table-entry" style="width: 30px; align: center">
-          <input type="checkbox" id="note-{{@index}}" name="deleteNote.{{@index}}" style="cursor: pointer;">
+          <input type="checkbox" id="note-{{note.id}}" name="deleteNote" value="{{note.id}}" style="cursor: pointer;">
         </td>
         <td class="tmm-notes-table-entry">{{note.text}}</td>
         <td class="tmm-notes-table-entry">{{note.duration}}</td>

@@ -17,8 +17,9 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     };
 
     super(options);
-    this.tokens = tokens;
     this.currentTab = 'modifiers';
+    this.tokens = tokens;
+    this.combat = game.combats.find(c => c.combatants.some(combatant => combatant.actor?.id === this.tokenDocuments[0].actor?.id));
   }
 
   static DEFAULT_OPTIONS = {
@@ -35,16 +36,16 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   static async onSubmit(event, form, formData) {
+    console.error(formData.object);
+
     const data = formData.object;
     const duration = data.durationOverride || data.duration;
     const combatantId = this._getCombatantIfEoT(duration);
     var note = null;
-    const _getEffectName = (text) => MODULE_ID + "-" + text;
-
-
 
     const protoNote = {
       duration: duration,
+      id: foundry.utils.randomID(),
       combatantId: combatantId,
       round: this.combat?.round,
       turn: this.combat?.turn,
@@ -53,81 +54,47 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
 
     switch (this.currentTab) {
       case "conditions":
-        note = foundry.utils.mergeObject(protoNote, {
-          condition: data.condition,
-          text: data.condition,
-        });
-
-        const conditionEffect = CONFIG.statusEffects.find(statusEffect => statusEffect.name === data.condition);
-        if (conditionEffect) {
-          for (const tokenDoc of this.tokenDocuments) {
-            await tokenDoc.actor.createEmbeddedDocuments("ActiveEffect", [{
-              icon: conditionEffect.img,
-              name: conditionEffect.name,
-              statuses: new Set([conditionEffect.id]),
-              flags: {
-                dnd4e: {
-                  effectData: {
-                    // Neccessary to prevent a null reference in the dnd4e system.
-                    durationType: "custom",
-                  }
-                }
-              }
-            }]);
-          }
-        } else {
-          ui.notifications.warn(`Condition "${data.condition}" not found in CONFIG.statusEffects. Please ensure the condition exists and has a name property.`);
-        }
+        note = await this._createConditionNote(data, protoNote);
         break;
       case "ongoing":
-        note = foundry.utils.mergeObject(protoNote, {
-          ongoingType: data.ongoingType,
-          ongoingDamage: data.ongoingDamage,
-          text: `Ongoing ${data.ongoingDamage} ${data.ongoingType}`,
-        });
+        note = await this._createOngoingNote(data, protoNote);
         break;
       case "modifiers":
-        note = foundry.utils.mergeObject(protoNote, {
-          text: `${data.modifierValue > 0 ? '+' : ''}${data.modifierValue} ${data.modifierType}`,
-          modifierType: data.modifierType,
-          modifierValue: data.modifierValue,
-        });
+        note = await this._createModifierNote(data, protoNote);
         break;
       case "resistances":
-        note = foundry.utils.mergeObject(protoNote, {
-          resistanceType: data.resistanceType,
-          resistanceValue: data.resistanceValue,
-          text: `${data.resistanceValue > 0 ? '+' : ''}${data.resistanceValue} ${data.resistanceType} Resistance`,
-        });
+        note = await this._createResistanceNote(data, protoNote);
         break;
       case "manual":
-        note = foundry.utils.mergeObject(protoNote, {
-          text: data.manualCondition,
-        });
+        note = await this._createManualNote(data, protoNote);
         break;
     }
 
+    return;
+
     for (const tokenDoc of this.tokenDocuments) {
-      console.error(tokenDoc);
+      // Get existing notes and reset broken ones. Any note without an ID is filtered away.
       const existingNotes = tokenDoc.getFlag(MODULE_ID, "notes") || [];
-      let verifiedNotes = Array.isArray(existingNotes) ? [...existingNotes] : [];
+      const verifiedNotes = Array.isArray(existingNotes) ? [...existingNotes.filter(note => !!note?.id)] : [];
 
-      // TODO: Remove the checked notes here.
+      // Keep track of removed notes
+      const removedNotes = data.deleteNote != null ? verifiedNotes.filter((note) => data.deleteNote.includes(note.id)) : [];
+      const remainingNotes = data.deleteNote != null ? verifiedNotes.filter((note) => !data.deleteNote.includes(note.id)) : verifiedNotes;
 
-      verifiedNotes.push(note);
-      console.error(note);
-      await tokenDoc.setFlag(MODULE_ID, "notes", verifiedNotes);
+      // Nothing was inputted, as such we don't need to add a note.
+      if (note != null && note.duration != null) {
+        remainingNotes.push(note);
+      }
 
-      // TODO: Remove effects of checked notes.
-      // await TrackingHelper.removeAdditionalNoteEffects(token);
+      await tokenDoc.setFlag(MODULE_ID, "notes", remainingNotes);
+
+      for (const removedNote of removedNotes) {
+        await TrackingHelper.removeAdditionalNoteEffects(tokenDoc.object, removedNote);
+      }
     }
   }
 
   get tokenDocuments() { return this.tokens.map(token => token.document); }
-
-  // Get the combat one of the tokens is in, we do not currently support multiple combats at once.
-  get combat() { return game.combats.find(c => c.combatants.some(combatant => combatant.actor?.id === this.tokenDocuments[0].actor?.id)); }
-  get currentCombatant() { return this.combat?.combatants; }
 
   static PARTS = {
     tabs: { template: 'templates/generic/tab-navigation.hbs' },
@@ -149,7 +116,6 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   async _prepareContext(options) {
-
     // Duration options
     const durationOptions = [
       { value: Constants.DURATION_ENCOUNTER, label: Constants.DURATION_ENCOUNTER },
@@ -158,6 +124,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     ];
     if (this.combat) {
       for (const c of this.combat.combatants) {
+        console.error(c);
         durationOptions.push(TrackingHelper.getCombatantDuration(c));
       }
     }
@@ -185,7 +152,9 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     return {
       notes: [...this.getNotes()],
       durations: durationOptions,
+      combatants: this.combat?.combatants,
       defaultDuration,
+      defaultCombatant: this.combat?.combatant ?? "",
       conditions: conditionOptions,
       damageTypes: damageTypeOptions,
       tabs: this._prepareTabs("primary"),
@@ -210,7 +179,6 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   getNotes() {
-
     // Only include notes that are present on every selected token (match by text+duration)
     const primaryNotes = this.tokenDocuments[0].getFlag(MODULE_ID, "notes") || [];
     let notesArray = [];
@@ -258,5 +226,63 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       const combatant = this.combat?.combatants.find(c => c.name === combatantName);
       return combatant?.id;
     }
+  }
+
+  async _createConditionNote(data, protoNote) {
+    if (!data.condition) return;
+
+    const conditionEffect = CONFIG.statusEffects.find(statusEffect => statusEffect.name === data.condition);
+    if (conditionEffect) {
+      for (const tokenDoc of this.tokenDocuments) {
+        await tokenDoc.actor.createEmbeddedDocuments("ActiveEffect", [{
+          icon: conditionEffect.img,
+          name: conditionEffect.name,
+          statuses: new Set([conditionEffect.id]),
+          flags: {
+            dnd4e: {
+              effectData: {
+                // Neccessary to prevent a null reference in the dnd4e system.
+                durationType: "custom",
+              }
+            }
+          }
+        }]);
+      }
+    } else {
+      ui.notifications.warn(`Condition "${data.condition}" not found in CONFIG.statusEffects. Please ensure the condition exists and has a name property.`);
+    }
+
+    return foundry.utils.mergeObject(protoNote, {
+      condition: data.condition,
+      text: data.condition,
+    });
+  }
+
+  async _createOngoingNote(data, protoNote) {
+    if (!data.ongoingType || !data.ongoingDamage) return;
+
+    return foundry.utils.mergeObject(protoNote, {
+      ongoingType: data.ongoingType,
+      ongoingDamage: data.ongoingDamage,
+      text: `Ongoing ${data.ongoingDamage} ${data.ongoingType}`,
+    });
+  }
+
+  async _createResistanceNote(data, protoNote) {
+    if (!data.resistanceType || !data.resistanceValue) return;
+
+    return foundry.utils.mergeObject(protoNote, {
+      resistanceType: data.resistanceType,
+      resistanceValue: data.resistanceValue,
+      text: `${data.resistanceValue > 0 ? '+' : ''}${data.resistanceValue} ${data.resistanceType} Resistance`,
+    });
+  }
+
+  async _createManualNote(data, protoNote) {
+    if (!data.manualCondition) return;
+
+    note = foundry.utils.mergeObject(protoNote, {
+      text: data.manualCondition,
+    });
   }
 }

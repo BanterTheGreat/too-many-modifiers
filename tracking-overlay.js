@@ -92,7 +92,6 @@ export class TrackingOverlay {
 
     var lineCount = desc.split("\n").length - 1;
     token.notesDisplay.position.set(width / 2, x + y + (lineCount * ((TrackingOverlay.fontSize * TrackingOverlay.gridScale) + padding)) + (hovering ? 24 : 0));
-    console.error(config);
   }
 
   static updateNotesDisplay(token, config = {}, hovering = false) {
@@ -106,6 +105,5 @@ export class TrackingOverlay {
 
     var lineCount = desc.split("\n").length - 1;
     token.notesDisplay.position.set(width / 2, x + y + (lineCount * ((TrackingOverlay.fontSize * TrackingOverlay.gridScale) + padding)) + (hovering ? 24 : 0));
-    console.error(config);
   }
 }

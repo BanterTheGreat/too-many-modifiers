@@ -8,12 +8,9 @@
               name="duration"
               style="width: 100%; padding: 5px;">
         <option value="">Select duration...</option>
-        {{#each durations as |opt|}}
-        <option value="{{opt.value}}"
-                {{#if
-                (eq
-                opt.value
-                ../defaultDuration)}}selected{{/if}}>{{opt.label}}</option>
+        {{#each durations as |duration|}}
+        <option value="{{duration.value}}"
+                {{#if (eq duration.value ../defaultDuration)}}selected{{/if}}>{{duration.label}}</option>
         {{/each}}
       </select>
     </div>
