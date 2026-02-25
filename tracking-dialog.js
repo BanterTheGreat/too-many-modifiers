@@ -4,7 +4,11 @@ import { Constants } from "./constants.js";
 import { MODULE_ID } from "./main.js";
 import { TrackingHelper } from "./tracking-helper.js";
 
+import { ConditionNoteHandler } from "./handlers/condition.js";
+import { OngoingNoteHandler } from "./handlers/ongoing.js";
 import { ModifierNoteHandler } from "./handlers/modifier.js";
+import { ResistanceNoteHandler } from "./handlers/resistance.js";
+import { ManualNoteHandler } from "./handlers/manual.js";
 
 export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   constructor(tokens) {
@@ -21,7 +25,9 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     super(options);
     this.currentTab = 'modifiers';
     this.tokens = tokens;
-    this.combat = game.combats.find(c => c.combatants.some(combatant => combatant.actor?.id === this.tokenDocuments[0].actor?.id));
+    this.combat = game.combats.find(c => c.combatants.some(combatant => combatant.actor?.id === tokens[0].document.actor?.id));
+    console.error(this.tokens);
+    console.error(this.combat);
   }
 
   static DEFAULT_OPTIONS = {
@@ -38,8 +44,6 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   static async onSubmit(event, form, formData) {
-    console.error(formData.object);
-
     const data = formData.object;
     const duration = data.durationOverride || data.duration;
     const combatantId = this._getCombatantIfEoT(duration);
@@ -54,29 +58,21 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       type: this.currentTab,
     };
 
-    let noteHandler;
+    const handlers = {
+      conditions: new ConditionNoteHandler(data, protoNote, this.tokenDocuments),
+      ongoing: new OngoingNoteHandler(data, protoNote),
+      modifiers: new ModifierNoteHandler(data, protoNote, this.tokenDocuments, this.combat),
+      resistances: new ResistanceNoteHandler(data, protoNote),
+      manual: new ManualNoteHandler(data, protoNote),
+    };
 
-    switch (this.currentTab) {
-      case "conditions":
-        note = await this._createConditionNote(data, protoNote);
-        break;
-      case "ongoing":
-        note = await this._createOngoingNote(data, protoNote);
-        break;
-      case "modifiers":
-        noteHandler = new ModifierNoteHandler(data, protoNote);
-        break;
-      case "resistances":
-        note = await this._createResistanceNote(data, protoNote);
-        break;
-      case "manual":
-        note = await this._createManualNote(data, protoNote);
-        break;
+    const noteHandler = handlers[this.currentTab];
+    if (noteHandler) {
+      note = await noteHandler.create();
+    } else {
+      ui.notifications.warn(`No handler found for note type "${this.currentTab}". Please ensure the type is correct and a handler exists.`);
+      return;
     }
-
-    note = noteHandler.create();
-
-    return;
 
     for (const tokenDoc of this.tokenDocuments) {
       // Get existing notes and reset broken ones. Any note without an ID is filtered away.
@@ -95,7 +91,10 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       await tokenDoc.setFlag(MODULE_ID, "notes", remainingNotes);
 
       for (const removedNote of removedNotes) {
-        await TrackingHelper.removeAdditionalNoteEffects(tokenDoc.object, removedNote);
+        const handler = handlers[removedNote.type];
+        if (handler) {
+          await handler.clean(tokenDoc.object, removedNote);
+        }
       }
     }
   }
@@ -122,16 +121,21 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   async _prepareContext(options) {
-    // Duration options
+    const playerCombatants = [];
     const durationOptions = [
       { value: Constants.DURATION_ENCOUNTER, label: Constants.DURATION_ENCOUNTER },
       { value: Constants.DURATION_ROUND, label: Constants.DURATION_ROUND },
       { value: Constants.DURATION_SAVE, label: Constants.DURATION_SAVE },
     ];
+
+    // Add combatants to duration options for EoT tracking.
     if (this.combat) {
       for (const c of this.combat.combatants) {
-        console.error(c);
         durationOptions.push(TrackingHelper.getCombatantDuration(c));
+        
+        if (c.actor?.type === "Player Character") {
+          playerCombatants.push(c);
+        }
       }
     }
 
@@ -158,9 +162,9 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     return {
       notes: [...this.getNotes()],
       durations: durationOptions,
-      combatants: this.combat?.combatants,
       defaultDuration,
-      defaultCombatant: this.combat?.combatant ?? "",
+      playerCombatants: playerCombatants,
+      defaultPlayerCombatant: this.combat?.combatant?.actor.type === "Player Character" ? this.combat?.combatant : "",
       conditions: conditionOptions,
       damageTypes: damageTypeOptions,
       tabs: this._prepareTabs("primary"),
@@ -215,7 +219,6 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         durationSelect.value = Constants.DURATION_SAVE;
       } else {
         const currentCombatant = this.combat?.combatant;
-        console.error(currentCombatant);
         if (currentCombatant) {
           const duration = TrackingHelper.getCombatantDuration(currentCombatant);
           durationSelect.value = duration.value;
@@ -232,63 +235,5 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       const combatant = this.combat?.combatants.find(c => c.name === combatantName);
       return combatant?.id;
     }
-  }
-
-  async _createConditionNote(data, protoNote) {
-    if (!data.condition) return;
-
-    const conditionEffect = CONFIG.statusEffects.find(statusEffect => statusEffect.name === data.condition);
-    if (conditionEffect) {
-      for (const tokenDoc of this.tokenDocuments) {
-        await tokenDoc.actor.createEmbeddedDocuments("ActiveEffect", [{
-          icon: conditionEffect.img,
-          name: conditionEffect.name,
-          statuses: new Set([conditionEffect.id]),
-          flags: {
-            dnd4e: {
-              effectData: {
-                // Neccessary to prevent a null reference in the dnd4e system.
-                durationType: "custom",
-              }
-            }
-          }
-        }]);
-      }
-    } else {
-      ui.notifications.warn(`Condition "${data.condition}" not found in CONFIG.statusEffects. Please ensure the condition exists and has a name property.`);
-    }
-
-    return foundry.utils.mergeObject(protoNote, {
-      condition: data.condition,
-      text: data.condition,
-    });
-  }
-
-  async _createOngoingNote(data, protoNote) {
-    if (!data.ongoingType || !data.ongoingDamage) return;
-
-    return foundry.utils.mergeObject(protoNote, {
-      ongoingType: data.ongoingType,
-      ongoingDamage: data.ongoingDamage,
-      text: `Ongoing ${data.ongoingDamage} ${data.ongoingType}`,
-    });
-  }
-
-  async _createResistanceNote(data, protoNote) {
-    if (!data.resistanceType || !data.resistanceValue) return;
-
-    return foundry.utils.mergeObject(protoNote, {
-      resistanceType: data.resistanceType,
-      resistanceValue: data.resistanceValue,
-      text: `${data.resistanceValue > 0 ? '+' : ''}${data.resistanceValue} ${data.resistanceType} Resistance`,
-    });
-  }
-
-  async _createManualNote(data, protoNote) {
-    if (!data.manualCondition) return;
-
-    note = foundry.utils.mergeObject(protoNote, {
-      text: data.manualCondition,
-    });
   }
 }

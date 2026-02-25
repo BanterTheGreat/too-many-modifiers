@@ -2,7 +2,22 @@
          data-group="primary"
          data-tab="modifiers">
   <div style="margin-bottom: 15px; display: flex; gap: 10px;">
-    <div style="width: 50%;">
+    <div style="width: 45%;">
+      <label>Effect Origin:</label>
+      <select id="origin"
+              name="origin"
+              style="padding: 5px;">
+        <option value="">Select...</option>
+        {{#each playerCombatants as |combatant|}}
+        <option value="{{combatant.tokenId}}"
+                {{#if
+                (eq
+                combatant.id
+                ../defaultPlayerCombatant.id)}}selected{{/if}}>{{combatant.name}}</option>
+        {{/each}}
+      </select>
+    </div>
+    <div style="width: 30%;">
       <label>Modifier:</label>
       <select id="modifierType"
               name="modifierType"
@@ -16,7 +31,7 @@
         <option value="Speed">Speed</option>
       </select>
     </div>
-    <div style="width: 50%;">
+    <div style="width: 25%;">
       <label>Type:</label>
       <select id="bonusType"
               name="bonusType"
@@ -29,43 +44,32 @@
     </div>
   </div>
   <div style="margin-bottom: 15px; display: flex; gap: 10px;">
-    <div style="width: 50%;">
-      <label>Effect Origin:</label>
-      <select id="origin"
-              name="origin"
-              style="padding: 5px;">
-        {{#each combatants as |combatant|}}
-        <option value="{{combatant.tokenId}}"
-                {{#if
-                (eq
-                combatant.id
-                ../defaultCombatant.id)}}selected{{/if}}>{{combatant.name}}</option>
-        {{/each}}
-      </select>
-    </div>
 
-    <div style="width: 25%;">
-      <label>Score:</label>
+
+    <div style="width: 50%;">
+      <label>Ability Score:</label>
       <select id="scoreValue"
               name="scoreValue"
               style="padding: 5px;">
         <option>Select...</option>
-        <option value="strength">Plus STR</option>
-        <option value="minus-strength">Minus STR</option>
-        <option value="dexterity">Plus DEX</option>
-        <option value="minus-dexterity">Minus DEX</option>
-        <option value="constitution">Plus CON</option>
-        <option value="minus-constitution">Minus CON</option>
-        <option value="intelligence">Plus INT</option>
-        <option value="minus-intelligence">Minus INT</option>
-        <option value="wisdom">Plus WIS</option>
-        <option value="minus-wisdom">Minus WIS</option>
-        <option value="charisma">Plus CHA</option>
-        <option value="minus-charisma">Minus CHA</option>
+        <option value="strength">Strength</option>
+        <option value="dexterity">Dexterity</option>
+        <option value="constitution">Constitution</option>
+        <option value="intelligence">Intelligence</option>
+        <option value="wisdom">Wisdom</option>
+        <option value="charisma">Charisma</option>
       </select>
     </div>
-    <div style="width: 25%;">
-      <label>Number:</label>
+    <div style="width: 15%;">
+      <label>Penalty?</label>
+      <input type="checkbox"
+             id="isNegativeModifier"
+             name="isNegativeModifier"
+             value="value"
+             style="cursor: pointer;">
+    </div>
+    <div style="width: 35%;">
+      <label>Number Override:</label>
       <input type="number"
              id="numberValue"
              name="numberValue"
@@ -73,6 +77,6 @@
              placeholder="Enter value">
     </div>
   </div>
-  <p>If you select a number it overwrites the selected ability score.</p>
+  <p>If you select a number it overwrites the ability score and penalty toggle.</p>
 
 </section>

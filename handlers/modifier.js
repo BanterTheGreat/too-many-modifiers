@@ -1,7 +1,9 @@
 export class ModifierNoteHandler {
-  constructor(data, protoNote) {
+  constructor(data, protoNote, documents, combat) {
     this.data = data;
     this.protoNote = protoNote;
+    this.documents = documents;
+    this.combat = combat;
   }
 
   async create() {
@@ -16,13 +18,35 @@ export class ModifierNoteHandler {
     });
   }
 
-  async clean() {
-    return;
+  async clean(token, note) {
+    if (!token?.actor) return;
+
+    const actor = token.actor;
+    const modifierType = note.modifierType;
+    const bonusName = `too-many-modifiers: ${note.text}`;
+    if (!modifierType) return;
+
+    const modifierPaths = {
+      'AC': 'system.defences.ac.bonus',
+      'Speed': 'system.movement.base.bonus',
+      'Damage': 'system.modifiers.damage.bonus',
+      'Saving Throws': 'system.details.saves.bonus',
+      'Attacks': 'system.modifiers.attack.bonus',
+    };
+
+    const path = modifierPaths[modifierType];
+    if (path) {
+      const bonus = foundry.utils.getProperty(actor, path) || [];
+      const updatedBonus = bonus.filter(b => b.name !== bonusName);
+      await actor.update({ [path]: updatedBonus });
+    } else {
+      ui.notifications.warn(`Modifier type "${modifierType}" is not supported yet.`);
+    }
   }
 
   _getModifierValue() {
-    // We got an ability score and no number, we use the ability score.
     if (this.data.scoreValue && !this.data.numberValue) {
+      // We got an ability score and no number, we use the ability score.
       const originToken = this.combat.combatants.find(combatant => combatant.tokenId === this.data.origin);
       if (!originToken) {
         ui.notifications.error("Selected origin token not found in combat.");
@@ -38,18 +62,19 @@ export class ModifierNoteHandler {
         'charisma': 'cha'
       };
 
-      let ability = this.data.origin;
-      let multiplier = 1;
+      let ability = this.data.scoreValue;
 
-      if (ability.startsWith('minus-')) {
-        multiplier = -1;
-        ability = ability.replace('minus-', '');
+      console.error(ability);
+      const abilityProperty = abilityMap[ability];
+      console.error(abilityProperty);
+      let value = originToken.actor.system.abilities[abilityProperty].mod;
+
+      // We checked that it is a penalty. Turn the value negative.
+      if (value > 0 && this.data.isNegativeModifier) {
+        value = -value;
       }
 
-      const abilityProperty = abilityMap[ability];
-      const value = originToken.actor.system.abilities[abilityProperty].mod;
-
-      return value < 0 ? value : multiplier * value;
+      return value;
     } else {
       return this.data.numberValue;
     }
