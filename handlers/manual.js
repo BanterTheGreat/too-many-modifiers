@@ -1,5 +1,8 @@
-export class ManualNoteHandler {
+import { NoteHandler } from "./base.js";
+
+export class ManualNoteHandler extends NoteHandler {
   constructor(data, protoNote) {
+    super();
     this.data = data;
     this.protoNote = protoNote;
   }
@@ -12,7 +15,8 @@ export class ManualNoteHandler {
     });
   }
 
-  async clean() {
+  async clean(token, note) {
+    super.clean(token, note);
     // Has no effects to clean up.
     return;
   }

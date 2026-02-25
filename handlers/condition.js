@@ -1,5 +1,8 @@
-export class ConditionNoteHandler {
+import { NoteHandler } from "./base.js";
+
+export class ConditionNoteHandler extends NoteHandler {
   constructor(data, protoNote, tokenDocuments) {
+    super();
     this.data = data;
     this.protoNote = protoNote;
     this.tokenDocuments = tokenDocuments;
@@ -35,12 +38,14 @@ export class ConditionNoteHandler {
     });
   }
 
-  async clean(actor, note) {
-    if (!actor) return;
+  async clean(token, note) {
+    if (!token?.actor) return;
     const conditionName = note.text;
-    const effect = actor.effects.find(e => e.name === conditionName);
+    const effect = token.actor.effects.find(e => e.name === conditionName);
     if (effect) {
       await effect.delete();
     }
+
+    super.clean(token, note);
   }
 }

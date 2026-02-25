@@ -1,7 +1,7 @@
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
 import { Constants } from "./constants.js";
-import { MODULE_ID } from "./main.js";
+import { MODULE_ID } from "./constants.js";
 import { TrackingHelper } from "./tracking-helper.js";
 
 import { ConditionNoteHandler } from "./handlers/condition.js";
@@ -81,24 +81,15 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       const verifiedNotes = Array.isArray(existingNotes) ? [...existingNotes.filter(note => !!note?.id)] : [];
 
       // Keep track of removed notes
-      const removedNotes = data.deleteNote != null ? verifiedNotes.filter((note) => data.deleteNote.includes(note.id)) : [];
-      const remainingNotes = data.deleteNote != null ? verifiedNotes.filter((note) => !data.deleteNote.includes(note.id)) : verifiedNotes;
+      const notesToRemove = data.deleteNote != null ? verifiedNotes.filter((note) => data.deleteNote.includes(note.id)) : [];
 
       // Nothing was inputted, as such we don't need to add a note.
       if (note != null && note.duration != null) {
-        remainingNotes.push(note);
+        verifiedNotes.push(note);
       }
 
-      await tokenDoc.setFlag(MODULE_ID, "notes", remainingNotes);
-
-      for (const removedNote of removedNotes) {
-        const handler = handlers[removedNote.type];
-        if (handler) {
-          await handler.clean(tokenDoc.actor, removedNote);
-        } else {
-          ui.notifications.warn(`No handler found for removed note type "${removedNote.type}". Please ensure the type is correct and a handler exists.`);
-        }
-      }
+      await tokenDoc.setFlag(MODULE_ID, "notes", verifiedNotes);
+      await TrackingHelper.deleteNotesAndEffects(tokenDoc, notesToRemove);
     }
   }
 

@@ -1,5 +1,8 @@
-export class ModifierNoteHandler {
+import { NoteHandler } from "./base.js";
+
+export class ModifierNoteHandler extends NoteHandler {
   constructor(data, protoNote, documents, combat) {
+    super();
     this.data = data;
     this.protoNote = protoNote;
     this.documents = documents;
@@ -55,13 +58,15 @@ export class ModifierNoteHandler {
     });
   }
 
-  async clean(actor, note) {
-    if (!actor) return;
-
-    const effect = actor.effects.find(e => e.name === note.id);
+  async clean(token, note) {
+    if (!token?.actor) return;
+    
+    const effect = token.actor.effects.find(e => e.name === note.id);
     if (effect) {
       await effect.delete();
     }
+
+    super.clean(token, note);
   }
 
   _getModifierValue() {

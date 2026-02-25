@@ -1,4 +1,4 @@
-import { MODULE_ID } from "./main.js";
+import { MODULE_ID } from "./constants.js";
 import { TrackingHelper } from "./tracking-helper.js";
 
 export class TrackingOverlay {

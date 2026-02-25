@@ -1,8 +1,7 @@
 import { CombatManager } from "./combat-manager.js";
 import { TrackingOverlay } from "./tracking-overlay.js";
 import { TrackingDialog } from "./tracking-dialog.js";
-
-export const MODULE_ID = "too-many-modifiers";
+import { MODULE_ID } from "./constants.js";
 
 Hooks.on("canvasReady", TrackingOverlay.onCanvasReady);
 Hooks.on("refreshToken", TrackingOverlay.refreshToken);

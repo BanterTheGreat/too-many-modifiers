@@ -1,5 +1,8 @@
-export class ResistanceNoteHandler {
+import { NoteHandler } from "./base.js";
+
+export class ResistanceNoteHandler extends NoteHandler {
   constructor(data, protoNote, documents) {
+    super();
     this.data = data;
     this.protoNote = protoNote;
     this.documents = documents;
@@ -53,23 +56,25 @@ export class ResistanceNoteHandler {
     });
   }
 
-  async clean(actor, note) {
-    if (!actor) return;
-
+  async clean(token, note) {
+    if (!token?.actor) return;
+    
     if (note.resistanceValue > 0) {
       // HACK: Auto-calculate seems to only work for resistances. Vulnerabilities go through the bonus dialog.
-      const effect = actor.effects.find(e => e.name === note.id);
+      const effect = token.actor.effects.find(e => e.name === note.id);
       if (effect) {
         await effect.delete();
       }
     } else {
       const resistanceType = note.resistanceType;
       if (!resistanceType) return;
-
+      
       const resistancePath = `system.resistances.${resistanceType}.bonus`;
-      const resistanceBonus = getProperty(actor, resistancePath) || [];
+      const resistanceBonus = getProperty(token.actor, resistancePath) || [];
       const updatedResistanceBonus = resistanceBonus.filter(b => b.name !== note.id);
-      await actor.update({ [resistancePath]: updatedResistanceBonus });
+      await token.actor.update({ [resistancePath]: updatedResistanceBonus });
     }
+
+    super.clean(token, note);
   }
 }
