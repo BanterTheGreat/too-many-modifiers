@@ -44,8 +44,9 @@ export class TrackingOverlay {
     // Create PIXI
     try {
       // We hide the note while hovering over a token.
+      const flags = TrackingHelper.getNoteFlags(token.document);
       const { desc, color, stroke } = {
-        desc: TrackingHelper.formatNotesForDisplay(token?.document.flags[MODULE_ID]?.notes ?? []),
+        desc: TrackingHelper.formatNotesForDisplay(flags),
         color: "#ffffff",
         stroke: "#000000"
       };

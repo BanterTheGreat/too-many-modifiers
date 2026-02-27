@@ -78,7 +78,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
 
     for (const tokenDoc of this.tokenDocuments) {
       // Get existing notes and reset broken ones. Any note without an ID is filtered away.
-      const existingNotes = tokenDoc.getFlag(MODULE_ID, "notes") || [];
+      const existingNotes = TrackingHelper.getNoteFlags(tokenDoc);
       const verifiedNotes = Array.isArray(existingNotes) ? [...existingNotes.filter(note => !!note?.id)] : [];
 
       // Keep track of removed notes
@@ -89,7 +89,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         verifiedNotes.push(note);
       }
 
-      await tokenDoc.setFlag(MODULE_ID, "notes", verifiedNotes);
+      await TrackingHelper.setNoteFlags(tokenDoc, verifiedNotes);
       await TrackingHelper.deleteNotesAndEffects(tokenDoc, notesToRemove);
     }
 
@@ -186,7 +186,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
 
   getNotes() {
     // Only include notes that are present on every selected token (match by text+duration)
-    const primaryNotes = this.tokenDocuments[0].getFlag(MODULE_ID, "notes") || [];
+    const primaryNotes = TrackingHelper.getNoteFlags(this.tokenDocuments[0]) || [];
     let notesArray = [];
     if (!Array.isArray(primaryNotes)) {
       ui.notifications.warn("Non-Array notes data found on primary token. Resetting notes.");
@@ -195,7 +195,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       notesArray = primaryNotes.filter(n => {
         return this.tokenDocuments.every(td => {
           if (td === this.tokenDocuments[0]) return true;
-          const otherNotes = td.getFlag(MODULE_ID, "notes");
+          const otherNotes = TrackingHelper.getNoteFlags(td);
           return Array.isArray(otherNotes) && otherNotes.some(on => on.text === n.text && on.duration === n.duration);
         });
       });

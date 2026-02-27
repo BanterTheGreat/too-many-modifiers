@@ -9,7 +9,7 @@ export class CombatManager {
       const token = combatant.token;
       if (!token) return;
 
-      let notesArray = token.getFlag(MODULE_ID, "notes") || [];
+      let notesArray = TrackingHelper.getNoteFlags(token);
 
       if (!Array.isArray(notesArray)) return;
 
@@ -31,7 +31,7 @@ export class CombatManager {
       const token = combatant.token;
       if (!token) return;
 
-      let notesArray = token.getFlag(MODULE_ID, "notes") || [];
+      let notesArray = TrackingHelper.getNoteFlags(token);
 
       if (!Array.isArray(notesArray)) return;
 
@@ -41,7 +41,7 @@ export class CombatManager {
       // Process removed notes
       if (notesToRemove.length > 0) {
         // Remove corresponding active effects
-          await TrackingHelper.deleteNotesAndEffects(token, notesToRemove);
+        await TrackingHelper.deleteNotesAndEffects(token, notesToRemove);
 
 
         // Create chat message with removed notes
@@ -71,17 +71,17 @@ export class CombatManager {
       const token = combatant.token;
       if (!token) return;
 
-      let notesArray = token.getFlag(MODULE_ID, "notes") || [];
+      let notesArray = TrackingHelper.getNoteFlags(token);
 
       if (!Array.isArray(notesArray)) return;
 
       // Find notes to remove
       const removedNotes = notesArray.filter(note => {
         if (note.combatantId !== previousCombatantId) return false;
-        
+
         const noteRound = note.round;
         const noteTurn = note.turn;
-        
+
         if (noteRound !== undefined && noteTurn !== undefined) {
           return previousRound > noteRound || (previousRound === noteRound && previousTurn > noteTurn);
         }
@@ -106,7 +106,7 @@ export class CombatManager {
 
     if (!token) return;
 
-    let notesArray = token.getFlag("too-many-modifiers", "notes") || [];
+    let notesArray = TrackingHelper.getNoteFlags(token);
 
     if (!Array.isArray(notesArray)) return;
 
@@ -144,7 +144,7 @@ export class CombatManager {
 
     if (!token) return;
 
-    let notesArray = token.getFlag("too-many-modifiers", "notes") || [];
+    let notesArray = TrackingHelper.getNoteFlags(token);
 
     if (!Array.isArray(notesArray)) return;
 

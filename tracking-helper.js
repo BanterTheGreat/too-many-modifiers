@@ -31,11 +31,11 @@ export class TrackingHelper {
       }
     }
 
-    const tokenNotes = token.getFlag(MODULE_ID, "notes") || [];
+    const tokenNotes = TrackingHelper.getNoteFlags(token);
     const newTokenNotes = tokenNotes.filter(n => !notes.map(x => x.id).includes(n.id));
 
     // Keep track of removed notes
-    await token.setFlag(MODULE_ID, "notes", newTokenNotes);
+    await TrackingHelper.setNoteFlags(token, newTokenNotes);
   }
 
   static formatNotesForDisplay(notes) {
@@ -63,5 +63,28 @@ export class TrackingHelper {
     }
 
     return duration;
+  }
+
+  /// For linked actors, gets the note data from the actor.
+  /// For unlinked actors, gets the note data from the token.
+  /// This is done because otherwise we might later get rid of the token, but the side effects remain.
+  static getNoteFlags(token) {
+    console.error(token);
+    if (token.actorLink) {
+      return token.actor.getFlag(MODULE_ID, "notes") || [];
+    } else {
+      return token.getFlag(MODULE_ID, "notes") || [];
+    }
+  }
+
+  /// For linked actors, sets the note data on the actor.
+  /// For unlinked actors, sets the note data on the token.
+  /// This is done because otherwise we might later get rid of the token, but the side effects remain.
+  static async setNoteFlags(token, notes) {
+    if (token.actorLink) {
+      return await token.actor.setFlag(MODULE_ID, "notes", notes);
+    } else {
+      return await token.setFlag(MODULE_ID, "notes", notes);
+    }
   }
 }
