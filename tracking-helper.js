@@ -69,7 +69,6 @@ export class TrackingHelper {
   /// For unlinked actors, gets the note data from the token.
   /// This is done because otherwise we might later get rid of the token, but the side effects remain.
   static getNoteFlags(token) {
-    console.error(token);
     if (token.actorLink) {
       return token.actor.getFlag(MODULE_ID, "notes") || [];
     } else {
