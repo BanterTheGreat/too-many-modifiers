@@ -26,8 +26,6 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     this.currentTab = 'modifiers';
     this.tokens = tokens;
     this.combat = game.combats.find(c => c.combatants.some(combatant => combatant.actor?.id === tokens[0].document.actor?.id));
-    console.error(this.tokens);
-    console.error(this.combat);
   }
 
   static DEFAULT_OPTIONS = {
@@ -177,7 +175,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     if (tab) {
       context.tab = { ...tab };
       // Set active class for initial tab
-      if (partId === "modifiers") {
+      if (partId === "modifiers" & this.currentTab === "modifiers") {
         context.tab.cssClass = "active";
       }
     }

@@ -8,10 +8,10 @@
             "name": "Banter"
         }
     ],
-	"esmodules": ["notes-display.js", "main.js"],
+	"esmodules": ["main.js"],
 	"styles": ["styles/tracking-dialog.css"],
 	"compatibility": {
-		"minimum": "12",
-		"verified": "12"
+		"minimum": "13",
+		"verified": "13"
 	}
 }

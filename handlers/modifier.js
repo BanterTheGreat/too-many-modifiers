@@ -13,33 +13,33 @@ export class ModifierNoteHandler extends NoteHandler {
     if (!this.data.modifierType || (!this.data.scoreValue && !this.data.numberValue)) return;
 
     const modifierValue = this._getModifierValue();
-    const changeKey = this._getChangeKey();
+    const changeKeys = this._getChangeKeys();
 
-    if (!changeKey || !modifierValue) {
+    if (!changeKeys || !modifierValue) {
       ui.notifications.warn("Unsupported modifier type or zero modifier value. Modifier note will not be created.");
       return;
     };
 
-    const noteText = `${modifierValue > 0 ? '+' : ''}${modifierValue} ${this.data.modifierType} (${this.data.modifierBonusType})`;
+    const changes = changeKeys.map(key => {
+      // Effect Modes
+      // 0: Custom
+      // 1: Multiply
+      // 2: Add
+      // 3: Downgrade
+      // 4: Upgrade
+      // 5: Override
+      return {
+        key: key,
+        mode: this.data.modifierBonusType === 'untyped' ? 2 : 4, // They should not stack if we got an type.
+        value: modifierValue,
+      }
+    });
 
     // Create the effects.
     for (const tokenDoc of this.documents) {
       await tokenDoc.actor.createEmbeddedDocuments("ActiveEffect", [{
         name: this.protoNote.id,
-        changes: [
-          // Effect Modes
-          // 0: Custom
-          // 1: Multiply
-          // 2: Add
-          // 3: Downgrade
-          // 4: Upgrade
-          // 5: Override
-          {
-            key: changeKey,
-            mode: this.data.modifierBonusType === 'untyped' ? 2 : 4, // They should not stack if we got an type.
-            value: modifierValue,
-          }
-        ],
+        changes: changes,
         flags: {
           dnd4e: {
             effectData: {
@@ -51,6 +51,7 @@ export class ModifierNoteHandler extends NoteHandler {
       }]);
     }
 
+    const noteText = `${modifierValue > 0 ? '+' : ''}${modifierValue} ${this.data.modifierType} (${this.data.modifierBonusType})`;
     return foundry.utils.mergeObject(this.protoNote, {
       text: noteText,
     });
@@ -58,7 +59,7 @@ export class ModifierNoteHandler extends NoteHandler {
 
   async clean(token, note) {
     if (!token?.actor) return;
-    
+
     const effect = token.actor.effects.find(e => e.name === note.id);
     if (effect) {
       await effect.delete();
@@ -101,19 +102,20 @@ export class ModifierNoteHandler extends NoteHandler {
     }
   }
 
-  _getChangeKey() {
+  _getChangeKeys() {
     const modifierPaths = {
-      "ac": "system.defences.ac",
-      "speed": "system.movement.base",
-      "damage": "system.modifiers.damage",
-      "savingThrows": "system.details.saves",
-      "attacks": "system.modifiers.attack",
+      "ac": ["system.defences.ac"],
+      "speed": ["system.movement.base"],
+      "damage": ["system.modifiers.damage"],
+      "savingThrows": ["system.details.saves"],
+      "attacks": ["system.modifiers.attack"],
+      'defenses': ["system.defences.ac", "system.defences.fort", "system.defences.ref", "system.defences.wil"],
     };
 
     const basePath = modifierPaths[this.data.modifierType];
 
     if (!basePath) return;
 
-    return basePath + `.${this.data.modifierBonusType}`;
+    return basePath.map(path => path + `.${this.data.modifierBonusType}`);
   }
 }
