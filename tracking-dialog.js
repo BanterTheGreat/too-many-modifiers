@@ -332,5 +332,57 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         customRadio.checked = true;
       });
     }
+
+    // Add event listeners for modifier value spinner
+    const increaseBtn = this.element.querySelector('#increaseModifier');
+    const decreaseBtn = this.element.querySelector('#decreaseModifier');
+    const numberValue = this.element.querySelector('#numberValue');
+
+    if (increaseBtn && numberValue) {
+      increaseBtn.addEventListener('click', () => {
+        const currentValue = Number.parseInt(numberValue.value) || 0;
+        numberValue.value = currentValue + 1;
+      });
+    }
+
+    if (decreaseBtn && numberValue) {
+      decreaseBtn.addEventListener('click', () => {
+        const currentValue = Number.parseInt(numberValue.value) || 0;
+        numberValue.value = currentValue - 1;
+      });
+    }
+
+    // Add event listeners for quick ability buttons
+    const quickAbilityButtons = this.element.querySelectorAll('.quick-ability');
+    quickAbilityButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const ability = button.dataset.ability;
+        const sign = button.dataset.sign;
+        
+        // Get the origin combatant
+        const originSelect = this.element.querySelector('#origin');
+        const originTokenId = originSelect?.value;
+        
+        if (!originTokenId || !this.combat) {
+          ui.notifications.warn("Please select an origin combatant first");
+          return;
+        }
+        
+        const originCombatant = this.combat.combatants.find(c => c.tokenId === originTokenId);
+        if (!originCombatant?.actor) {
+          ui.notifications.error("Selected origin combatant not found");
+          return;
+        }
+        
+        // Get the ability modifier value
+        const abilityValue = originCombatant.actor.system.abilities[ability]?.mod || 0;
+        
+        // Set the value (hardset, not add)
+        const numberValue = this.element.querySelector('#numberValue');
+        if (numberValue) {
+          numberValue.value = sign === '+' ? Math.abs(abilityValue) : -Math.abs(abilityValue);
+        }
+      });
+    });
   }
 }

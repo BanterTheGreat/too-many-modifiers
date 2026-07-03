@@ -10,7 +10,7 @@ export class ModifierNoteHandler extends NoteHandler {
   }
 
   async create() {
-    if (!this.data.modifierType || (!this.data.scoreValue && !this.data.numberValue)) return;
+    if (!this.data.modifierType || !this.data.numberValue) return;
 
     const modifierValue = this._getModifierValue();
     const changeKeys = this._getChangeKeys();
@@ -69,37 +69,8 @@ export class ModifierNoteHandler extends NoteHandler {
   }
 
   _getModifierValue() {
-    if (this.data.scoreValue && !this.data.numberValue) {
-      // We got an ability score and no number, we use the ability score.
-      const originToken = this.combat.combatants.find(combatant => combatant.tokenId === this.data.origin);
-      if (!originToken) {
-        ui.notifications.error("Selected origin token not found in combat.");
-        return;
-      }
-
-      const abilityMap = {
-        'strength': 'str',
-        'dexterity': 'dex',
-        'constitution': 'con',
-        'intelligence': 'int',
-        'wisdom': 'wis',
-        'charisma': 'cha'
-      };
-
-      let ability = this.data.scoreValue;
-
-      const abilityProperty = abilityMap[ability];
-      let value = originToken.actor.system.abilities[abilityProperty].mod;
-
-      // We checked that it is a penalty. Turn the value negative.
-      if (value > 0 && this.data.isNegativeModifier === "true") {
-        value = -value;
-      }
-
-      return value;
-    } else {
-      return this.data.numberValue;
-    }
+    // Simply return the number value from the spinner
+    return Number.parseInt(this.data.numberValue) || 0;
   }
 
   _getChangeKeys() {
