@@ -2,48 +2,6 @@
          data-group="primary"
          data-tab="modifiers">
   <div style="margin-bottom: 15px; display: flex; gap: 10px;">
-    <div style="width: 50%;">
-      <label>Effect Origin:</label>
-      <select id="origin"
-              name="origin"
-              style="padding: 5px;">
-        <option value="">Select...</option>
-        {{#each playerCombatants as |combatant|}}
-        <option value="{{combatant.tokenId}}"
-                {{#if
-                (eq
-                combatant.id
-                ../defaultPlayerCombatant.id)}}selected{{/if}}>{{combatant.name}}</option>
-        {{/each}}
-      </select>
-    </div>
-
-    <div style="width: 15%;">
-      <label>+/-</label>
-      <select id="isNegativeModifier"
-              name="isNegativeModifier"
-              style="padding: 5px;">
-        <option value="false">+</option>
-        <option value="true">-</option>
-      </select>
-    </div>
-
-    <div style="width: 35%;">
-      <label>Ability Score:</label>
-      <select id="scoreValue"
-              name="scoreValue"
-              style="padding: 5px;">
-        <option>Select...</option>
-        <option value="strength">Strength</option>
-        <option value="dexterity">Dexterity</option>
-        <option value="constitution">Constitution</option>
-        <option value="intelligence">Intelligence</option>
-        <option value="wisdom">Wisdom</option>
-        <option value="charisma">Charisma</option>
-      </select>
-    </div>
-  </div>
-  <div style="margin-bottom: 15px; display: flex; gap: 10px;">
     <div style="width: 25%;">
       <label>Modifies:</label>
       <select id="modifierType"
@@ -58,8 +16,59 @@
         <option value="speed">Speed</option>
       </select>
     </div>
-    <div style="width: 25%;">
-      <label>Type:</label>
+
+    <div style="width: 10%;">
+      <label>+/-</label>
+      <select id="isNegativeModifier"
+              name="isNegativeModifier"
+              style="padding: 5px;">
+        <option value="false">+</option>
+        <option value="true">-</option>
+      </select>
+    </div>
+
+    <div style="width: 30%;">
+      <label>Ability Score:</label>
+      <select id="scoreValue"
+              name="scoreValue"
+              style="padding: 5px;">
+        <option>Select...</option>
+        <option value="strength">Strength</option>
+        <option value="dexterity">Dexterity</option>
+        <option value="constitution">Constitution</option>
+        <option value="intelligence">Intelligence</option>
+        <option value="wisdom">Wisdom</option>
+        <option value="charisma">Charisma</option>
+      </select>
+    </div>
+
+    <div style="width: 35%;">
+      <label>Number Override:</label>
+      <input type="number"
+             id="numberValue"
+             name="numberValue"
+             style="padding: 5px;"
+             placeholder="Enter value">
+    </div>
+  </div>
+
+  <h5>Details</h5>
+  <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+    <div style="width: 50%;">
+      <select id="origin"
+              name="origin"
+              style="padding: 5px;">
+        <option value="">Select origin...</option>
+        {{#each playerCombatants as |combatant|}}
+        <option value="{{combatant.tokenId}}"
+                {{#if
+                (eq
+                combatant.tokenId
+                ../defaultPlayerCombatant.tokenId)}}selected{{/if}}>{{combatant.name}}</option>
+        {{/each}}
+      </select>
+    </div>
+    <div style="width: 50%;">
       <select id="modifierBonusType"
               name="modifierBonusType"
               style="padding: 5px;">
@@ -69,16 +78,5 @@
         <option value="untyped">Untyped</option>
       </select>
     </div>
-
-    <div style="width: 50%;">
-      <label>Number Override:</label>
-      <input type="number"
-             id="numberValue"
-             name="numberValue"
-             style="padding: 5px;"
-             placeholder="Enter value">
-    </div>
   </div>
-  <p>If you select a number it overwrites the ability score.</p>
-
 </section>

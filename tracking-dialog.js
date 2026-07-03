@@ -18,7 +18,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       },
       position: {
         height: "auto",
-        width: 400,
+        width: 600,
       }
     };
 
@@ -26,6 +26,9 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     this.currentTab = 'modifiers';
     this.tokens = tokens;
     this.combat = game.combats.find(c => c.combatants.some(combatant => combatant.actor?.id === tokens[0].document.actor?.id));
+    // Set initial origin to current combatant's token
+    this.selectedOrigin = this.combat?.combatant?.tokenId || null;
+    this._originChangeHandler = this._onOriginChange.bind(this);
   }
 
   static DEFAULT_OPTIONS = {
@@ -44,7 +47,9 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   static async onSubmit(event, form, formData) {
     const action = event.submitter.dataset.type;
     const data = formData.object;
-    const duration = data.durationOverride || data.duration;
+    
+    // Resolve duration based on radio button selection
+    let duration = this._resolveDuration(data.duration, data.durationOverride);
     const combatantId = this._getCombatantIfEoT(duration);
     const userFriendlyDuration = TrackingHelper.getUserFriendlyDuration(duration, this.combat);
     var note = null;
@@ -98,7 +103,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     }
   }
 
-    get tokenDocuments() { return this.tokens.map(token => token.document); }
+  get tokenDocuments() { return this.tokens.map(token => token.document); }
 
   static PARTS = {
     tabs: { template: 'templates/generic/tab-navigation.hbs' },
@@ -120,54 +125,123 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   async _prepareContext(options) {
-    const playerCombatants = [];
-    const durationOptions = [
-      { value: Constants.DURATION_ENCOUNTER, label: Constants.DURATION_ENCOUNTER },
-      { value: Constants.DURATION_ROUND, label: Constants.DURATION_ROUND },
-      { value: Constants.DURATION_SAVE, label: Constants.DURATION_SAVE },
-    ];
-
-    // Add combatants to duration options for EoT tracking.
-    if (this.combat) {
-      for (const c of this.combat.combatants) {
-        durationOptions.push(TrackingHelper.getCombatantDuration(c));
-        
-        if (c.actor?.type === "Player Character") {
-          playerCombatants.push(c);
-        }
-      }
-    }
-
-    // Condition options
-    const conditions = CONFIG.statusEffects || [];
-    const conditionOptions = conditions.map(condition => {
-      const label = condition.label || condition.name || condition;
-      const value = condition.name || condition.id || label;
-      return { value, label };
-    });
-
-    // Damage type options
-    const damageTypes = CONFIG.DND4E?.damageTypes || {};
-    const damageTypeOptions = Object.entries(damageTypes).map(([key, label]) => {
-      return { value: key, label };
-    });
-
-    // Default duration: EoT of current combatant if in combat
-    const currentCombatant = this.combat?.combatant;
-    const defaultDuration = currentCombatant
-      ? TrackingHelper.getCombatantDuration(currentCombatant).value
-      : "";
+    const originCombatants = this._buildOriginCombatants();
+    const conditionOptions = this._getConditionOptions();
+    const damageTypeOptions = this._getDamageTypeOptions();
+    const defaultDuration = this._getDefaultDuration();
 
     return {
       notes: [...this.getNotes()],
-      durations: durationOptions,
       defaultDuration,
-      playerCombatants: playerCombatants,
-      defaultPlayerCombatant: this.combat?.combatant?.actor.type === "Player Character" ? this.combat?.combatant : "",
+      playerCombatants: originCombatants,
+      defaultPlayerCombatant: originCombatants.find(c => c.tokenId === this.combat?.combatant?.tokenId) || null,
       conditions: conditionOptions,
       damageTypes: damageTypeOptions,
       tabs: this._prepareTabs("primary"),
     };
+  }
+
+  _buildOriginCombatants() {
+    const playerCombatants = [];
+    const nonPlayerCombatants = [];
+
+    // Add combatants for Effect Origin dropdown
+    if (this.combat) {
+      for (const c of this.combat.combatants) {
+        if (c.actor?.type === "Player Character") {
+          playerCombatants.push(c);
+        } else {
+          nonPlayerCombatants.push(c);
+        }
+      }
+    }
+
+    // Combine lists with PCs first, then add duplicate numbering
+    const combinedCombatants = [...playerCombatants, ...nonPlayerCombatants];
+    const nameCounts = new Map();
+    const originCombatants = combinedCombatants.map(c => {
+      const baseName = c.name;
+      const count = nameCounts.get(baseName) || 0;
+      nameCounts.set(baseName, count + 1);
+      
+      // Add numbering if there are duplicates
+      const displayName = count > 0 ? `${baseName} (${count + 1})` : baseName;
+      
+      return {
+        ...c,
+        name: displayName,
+        originalName: baseName
+      };
+    });
+
+    // Go back and update the first occurrence if there were duplicates
+    const finalOriginCombatants = originCombatants.map(c => {
+      const totalCount = nameCounts.get(c.originalName);
+      if (totalCount > 1 && !c.name.includes('(')) {
+        return {
+          ...c,
+          name: `${c.originalName} (1)`
+        };
+      }
+      return c;
+    });
+
+    return finalOriginCombatants;
+  }
+
+  _resolveDuration(durationType, customValue) {
+    if (!durationType) return "";
+
+    switch(durationType) {
+      case "encounter":
+        return Constants.DURATION_ENCOUNTER;
+      case "round":
+        return Constants.DURATION_ROUND;
+      case "save":
+        return Constants.DURATION_SAVE;
+      case "eot-origin":
+        // Use selected origin if available
+        if (this.selectedOrigin && this.combat) {
+          return `EoT ${this.selectedOrigin}`;
+        }
+        return "";
+      case "eot-target":
+        // Use the first token being edited
+        if (this.tokens && this.tokens.length > 0) {
+          return `EoT ${this.tokens[0].id}`;
+        }
+        return "";
+      case "custom":
+        // Use the custom value from the textfield
+        return customValue || "";
+      default:
+        return durationType;
+    }
+  }
+
+  _getConditionOptions() {
+    const conditions = CONFIG.statusEffects || [];
+    return conditions.map(condition => {
+      const label = condition.label || condition.name || condition;
+      const value = condition.name || condition.id || label;
+      return { value, label };
+    });
+  }
+
+  _getDamageTypeOptions() {
+    const damageTypes = CONFIG.DND4E?.damageTypes || {};
+    return Object.entries(damageTypes).map(([key, label]) => {
+      return { value: key, label };
+    });
+  }
+
+  _getDefaultDuration() {
+    // Default to EoT Origin if we have a selected origin
+    if (this.selectedOrigin) {
+      return "eot-origin";
+    }
+    // Otherwise default to encounter
+    return "encounter";
   }
 
   async _preparePartContext(partId, context) {
@@ -175,7 +249,7 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     if (tab) {
       context.tab = { ...tab };
       // Set active class for initial tab
-      if (partId === "modifiers" & this.currentTab === "modifiers") {
+      if (partId === "modifiers" && this.currentTab === "modifiers") {
         context.tab.cssClass = "active";
       }
     }
@@ -207,16 +281,15 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     this.currentTab = selectedTab;
 
     // Auto-set duration based on selected tab
-    const durationSelect = this.element.querySelector('[name="duration"]');
-    if (durationSelect) {
-      if (selectedTab === "ongoing") {
-        durationSelect.value = Constants.DURATION_SAVE;
-      } else {
-        const currentCombatant = this.combat?.combatant;
-        if (currentCombatant) {
-          const duration = TrackingHelper.getCombatantDuration(currentCombatant);
-          durationSelect.value = duration.value;
-        }
+    if (selectedTab === "ongoing") {
+      // Set "save" radio button for ongoing effects
+      const saveRadio = this.element.querySelector('[name="duration"][value="save"]');
+      if (saveRadio) saveRadio.checked = true;
+    } else {
+      // Set "eot-origin" radio button for other tabs if we have a selected origin
+      if (this.selectedOrigin) {
+        const eotOriginRadio = this.element.querySelector('[name="duration"][value="eot-origin"]');
+        if (eotOriginRadio) eotOriginRadio.checked = true;
       }
     }
 
@@ -228,6 +301,36 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
       const combatantName = duration.replace("EoT ", "");
       const combatant = this.combat?.combatants.find(c => c.tokenId === combatantName);
       return combatant?.id;
+    }
+  }
+
+  _onOriginChange(event) {
+    this.selectedOrigin = event.target.value;
+    // No need to re-render since radio buttons are static
+  }
+
+  _onRender(context, options) {
+    super._onRender(context, options);
+
+    // Add event listener for origin dropdown
+    const originSelect = this.element.querySelector('#origin');
+    if (originSelect) {
+      // Remove old listener if it exists to prevent memory leaks
+      originSelect.removeEventListener('change', this._originChangeHandler);
+      // Add the listener
+      originSelect.addEventListener('change', this._originChangeHandler);
+    }
+
+    // Auto-select custom radio button when custom textfield is focused or typed in
+    const customField = this.element.querySelector('#durationOverride');
+    const customRadio = this.element.querySelector('#customRadio');
+    if (customField && customRadio) {
+      customField.addEventListener('focus', () => {
+        customRadio.checked = true;
+      });
+      customField.addEventListener('input', () => {
+        customRadio.checked = true;
+      });
     }
   }
 }
