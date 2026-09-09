@@ -1,6 +1,16 @@
 import { NoteHandler } from "./base.js";
 
+/**
+ * Creates and removes status-condition Active Effects.
+ */
 export class ConditionNoteHandler extends NoteHandler {
+  /**
+   * Creates a condition-note handler.
+   *
+   * @param {object} data The submitted form data.
+   * @param {object} protoNote Shared data for the new note.
+   * @param {TokenDocument[]} tokenDocuments Tokens receiving the effects.
+   */
   constructor(data, protoNote, tokenDocuments) {
     super();
     this.data = data;
@@ -8,6 +18,11 @@ export class ConditionNoteHandler extends NoteHandler {
     this.tokenDocuments = tokenDocuments;
   }
 
+  /**
+   * Creates status effects for the selected conditions and returns their note.
+   *
+   * @returns {Promise<object|undefined>} The created note, if valid.
+   */
   async create() {
     if (!this.data.condition) return;
 
@@ -57,6 +72,13 @@ export class ConditionNoteHandler extends NoteHandler {
     });
   }
 
+  /**
+   * Removes Active Effects associated with a condition note.
+   *
+   * @param {TokenDocument} token The affected token document.
+   * @param {object} note The note being removed.
+   * @returns {Promise<void>}
+   */
   async clean(token, note) {
     if (!token?.actor) return;
     const effects = token.actor.effects.filter(e => e.description === note.id);

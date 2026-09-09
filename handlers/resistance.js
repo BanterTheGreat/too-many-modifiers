@@ -1,6 +1,16 @@
 import { NoteHandler } from "./base.js";
 
+/**
+ * Creates and removes Active Effects for resistances and vulnerabilities.
+ */
 export class ResistanceNoteHandler extends NoteHandler {
+  /**
+   * Creates a resistance-note handler.
+   *
+   * @param {object} data The submitted form data.
+   * @param {object} protoNote Shared data for the new note.
+   * @param {TokenDocument[]} documents Tokens receiving the effects.
+   */
   constructor(data, protoNote, documents) {
     super();
     this.data = data;
@@ -8,6 +18,11 @@ export class ResistanceNoteHandler extends NoteHandler {
     this.documents = documents;
   }
 
+  /**
+   * Creates resistance effects and returns their tracking note.
+   *
+   * @returns {Promise<object|undefined>} The created note, if valid.
+   */
   async create() {
     if (!this.data.resistanceType || !this.data.resistanceValue) return;
 
@@ -40,6 +55,13 @@ export class ResistanceNoteHandler extends NoteHandler {
     });
   }
 
+  /**
+   * Removes the Active Effect associated with a resistance note.
+   *
+   * @param {TokenDocument} token The affected token document.
+   * @param {object} note The note being removed.
+   * @returns {Promise<void>}
+   */
   async clean(token, note) {
     if (!token?.actor) return;
 

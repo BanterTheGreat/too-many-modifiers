@@ -5,12 +5,27 @@ import { ResistanceNoteHandler } from "./handlers/resistance.js";
 import { ManualNoteHandler } from "./handlers/manual.js";
 import { MODULE_ID } from "./constants.js";
 
+/**
+ * Provides shared note storage, cleanup, and display helpers.
+ */
 export class TrackingHelper {
+  /**
+   * Builds a duration option for a combatant's end of turn.
+   *
+   * @param {Combatant} combatant The combatant to use as the origin.
+   * @returns {{value: string, label: string}} The duration option.
+   */
   static getCombatantDuration(combatant) {
     return { value: `EoT ${combatant.tokenId}`, label: `EoT ${combatant.name}` };
   }
 
-  /// Cleans up all effects related to a note to prevent any weird leftovers.
+  /**
+   * Cleans up effects related to notes and removes the notes from storage.
+   *
+   * @param {TokenDocument} token The affected token document.
+   * @param {object[]} notes The notes to remove.
+   * @returns {Promise<void>}
+   */
   static async deleteNotesAndEffects(token, notes) {
     const handlers = {
       // Somewhat scuffed, but the handlers have a clean function that does not require any class data.
@@ -38,6 +53,12 @@ export class TrackingHelper {
     await TrackingHelper.setNoteFlags(token, newTokenNotes);
   }
 
+  /**
+   * Formats notes for the token overlay.
+   *
+   * @param {object[]|unknown} notes The note data to format.
+   * @returns {string|undefined} Newline-separated note text, or undefined for invalid data.
+   */
   static formatNotesForDisplay(notes) {
     if (!Array.isArray(notes)) {
       return undefined;
@@ -55,6 +76,13 @@ export class TrackingHelper {
     return resultArray.join("\n");
   }
 
+  /**
+   * Replaces an end-of-turn token ID with its combatant name.
+   *
+   * @param {string} duration The stored duration.
+   * @param {Combat} combat The active combat, if any.
+   * @returns {string} A display-friendly duration.
+   */
   static getUserFriendlyDuration(duration, combat) {
     if (duration?.startsWith("EoT ")) {
       const combatantName = duration.replace("EoT ", "");
@@ -65,9 +93,12 @@ export class TrackingHelper {
     return duration;
   }
 
-  /// For linked actors, gets the note data from the actor.
-  /// For unlinked actors, gets the note data from the token.
-  /// This is done because otherwise we might later get rid of the token, but the side effects remain.
+  /**
+   * Reads notes from the actor for linked tokens, otherwise from the token.
+   *
+   * @param {TokenDocument} token The token document to inspect.
+   * @returns {object[]} The stored notes.
+   */
   static getNoteFlags(token) {
     if (token.actorLink) {
       return token.actor.getFlag(MODULE_ID, "notes") || [];
@@ -76,9 +107,13 @@ export class TrackingHelper {
     }
   }
 
-  /// For linked actors, sets the note data on the actor.
-  /// For unlinked actors, sets the note data on the token.
-  /// This is done because otherwise we might later get rid of the token, but the side effects remain.
+  /**
+   * Stores notes on the actor for linked tokens, otherwise on the token.
+   *
+   * @param {TokenDocument} token The token document to update.
+   * @param {object[]} notes The notes to store.
+   * @returns {Promise<unknown>} The Foundry flag-update result.
+   */
   static async setNoteFlags(token, notes) {
     if (token.actorLink) {
       return await token.actor.setFlag(MODULE_ID, "notes", notes);

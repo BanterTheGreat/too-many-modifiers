@@ -1,29 +1,64 @@
 import { MODULE_ID } from "./constants.js";
 import { TrackingHelper } from "./tracking-helper.js";
 
+/**
+ * Renders tracked notes above tokens on the canvas.
+ */
 export class TrackingOverlay {
+  /**
+   * Gets the canvas grid scale relative to a 100-pixel grid.
+   *
+   * @returns {number} The current grid scale.
+   */
   static get gridScale() {
     return canvas.scene.dimensions.size / 100;
   }
 
+  /**
+   * Gets the base overlay font size.
+   *
+   * @returns {number} The base font size in pixels.
+   */
   static get fontSize() {
     return 18;
   }
 
+  /**
+   * Gets the high-resolution font size used before scaling the PIXI text.
+   *
+   * @returns {number} The scaled font size.
+   */
   static get scaledFontSize() {
     return (TrackingOverlay.fontSize * TrackingOverlay.gridScale) * 4;
   }
 
+  /**
+   * Refreshes an overlay when Foundry refreshes a token.
+   *
+   * @param {Token} token The canvas token.
+   * @param {object} flags Foundry refresh flags.
+   */
   static refreshToken(token, flags) {
     TrackingOverlay.handleOverlay(token, token.hover);
   }
 
+  /**
+   * Initializes overlays for tokens on a ready canvas.
+   */
   static onCanvasReady() {
     canvas.tokens?.placeables.forEach((token) => {
       TrackingOverlay.handleOverlay(token, true);
     });
   }
 
+  /**
+   * Refreshes overlays for tokens sharing an updated actor.
+   *
+   * @param {Actor} actor The updated actor.
+   * @param {object} data The changed data.
+   * @param {object} options Update options.
+   * @param {string} userId The user that made the update.
+   */
   static onUpdateActor(actor, data, options, userId) {
     // Get all the tokens because there can be two tokens of the same linked actor.
     const tokens = canvas.tokens?.placeables.filter((token) => token?.actor?.id === actor.id);
@@ -31,6 +66,14 @@ export class TrackingOverlay {
     tokens?.forEach((token) => TrackingOverlay.handleOverlay(token, true));
   }
 
+  /**
+   * Refreshes overlays after this module updates token flags.
+   *
+   * @param {TokenDocument} token The updated token document.
+   * @param {object} data The changed data.
+   * @param {object} options Update options.
+   * @param {string} userId The user that made the update.
+   */
   static onUpdateToken(token, data, options, userId) {
     if (data?.flags && data.flags[MODULE_ID]) {
       // Get all the tokens because there can be two tokens of the same linked actor.
@@ -40,6 +83,12 @@ export class TrackingOverlay {
     }
   }
 
+  /**
+   * Creates or updates a token's note overlay.
+   *
+   * @param {Token} token The canvas token.
+   * @param {boolean} [hovering=false] Whether to offset for a hover state.
+   */
   static handleOverlay(token, hovering = false) {
     // Create PIXI
     try {
@@ -70,6 +119,13 @@ export class TrackingOverlay {
     }
   }
 
+  /**
+   * Creates a PIXI text display for a token's notes.
+   *
+   * @param {Token} token The canvas token.
+   * @param {object} [config={}] Overlay configuration.
+   * @param {boolean} [hovering=false] Whether to offset for a hover state.
+   */
   static createNotesDisplay(token, config = {}, hovering = false) {
     const { desc, color, stroke, width, x, y } = config;
     const padding = 5;
@@ -95,6 +151,13 @@ export class TrackingOverlay {
     token.notesDisplay.position.set(width / 2, x + y + (lineCount * ((TrackingOverlay.fontSize * TrackingOverlay.gridScale) + padding)) + (hovering ? 24 : 0));
   }
 
+  /**
+   * Updates an existing PIXI text display for a token's notes.
+   *
+   * @param {Token} token The canvas token.
+   * @param {object} [config={}] Overlay configuration.
+   * @param {boolean} [hovering=false] Whether to offset for a hover state.
+   */
   static updateNotesDisplay(token, config = {}, hovering = false) {
     const { desc, color, stroke, width, x, y } = config;
     const padding = 5;

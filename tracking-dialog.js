@@ -10,7 +10,15 @@ import { ModifierNoteHandler } from "./handlers/modifier.js";
 import { ResistanceNoteHandler } from "./handlers/resistance.js";
 import { ManualNoteHandler } from "./handlers/manual.js";
 
+/**
+ * Presents the form used to create and remove tracked notes on tokens.
+ */
 export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
+  /**
+   * Creates a tracking dialog for the selected canvas tokens.
+   *
+   * @param {Token[]} tokens The tokens to edit.
+   */
   constructor(tokens) {
     const options = {
       window: {
@@ -44,6 +52,14 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     }
   }
 
+  /**
+   * Creates a note from the submitted form and applies it to every token.
+   *
+   * @param {SubmitEvent} event The form submission event.
+   * @param {HTMLFormElement} form The submitted form.
+   * @param {FormDataExtended} formData The parsed Foundry form data.
+   * @returns {Promise<void>}
+   */
   static async onSubmit(event, form, formData) {
     const action = event.submitter.dataset.type;
     const data = formData.object;
@@ -103,6 +119,11 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     }
   }
 
+  /**
+   * Gets the documents represented by the selected canvas tokens.
+   *
+   * @returns {TokenDocument[]} The selected token documents.
+   */
   get tokenDocuments() { return this.tokens.map(token => token.document); }
 
   static PARTS = {
@@ -124,6 +145,12 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     }
   }
 
+  /**
+   * Prepares data shared by the dialog's rendered parts.
+   *
+   * @param {object} options Render options.
+   * @returns {Promise<object>} The template context.
+   */
   async _prepareContext(options) {
     const originCombatants = this._buildOriginCombatants();
     const conditionOptions = this._getConditionOptions();
@@ -141,6 +168,11 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     };
   }
 
+  /**
+   * Builds uniquely labelled combatant options, with PCs listed first.
+   *
+   * @returns {Combatant[]} Combatants for the origin selector.
+   */
   _buildOriginCombatants() {
     const playerCombatants = [];
     const nonPlayerCombatants = [];
@@ -189,6 +221,13 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     return finalOriginCombatants;
   }
 
+  /**
+   * Converts a form duration selection into its stored representation.
+   *
+   * @param {string} durationType The selected duration type.
+   * @param {string} customValue The custom duration text.
+   * @returns {string} The resolved duration.
+   */
   _resolveDuration(durationType, customValue) {
     if (!durationType) return "";
 
@@ -219,6 +258,11 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     }
   }
 
+  /**
+   * Builds condition options from Foundry's configured status effects.
+   *
+   * @returns {{value: string, label: string}[]} The condition options.
+   */
   _getConditionOptions() {
     const conditions = CONFIG.statusEffects || [];
     return conditions.map(condition => {
@@ -228,6 +272,11 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     });
   }
 
+  /**
+   * Builds damage-type options from the DnD4e configuration.
+   *
+   * @returns {{value: string, label: string}[]} The damage-type options.
+   */
   _getDamageTypeOptions() {
     const damageTypes = CONFIG.DND4E?.damageTypes || {};
     return Object.entries(damageTypes).map(([key, label]) => {
@@ -235,6 +284,11 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     });
   }
 
+  /**
+   * Determines the default duration for a new note.
+   *
+   * @returns {string} The default duration type.
+   */
   _getDefaultDuration() {
     // Default to EoT Origin if we have a selected origin
     if (this.selectedOrigin) {
@@ -244,6 +298,13 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     return "encounter";
   }
 
+  /**
+   * Adds tab state to a rendered application part.
+   *
+   * @param {string} partId The part being rendered.
+   * @param {object} context The shared template context.
+   * @returns {Promise<object>} The part context.
+   */
   async _preparePartContext(partId, context) {
     const tab = context.tabs?.[partId];
     if (tab) {
@@ -256,6 +317,11 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     return context;
   }
 
+  /**
+   * Gets notes that are shared by every selected token.
+   *
+   * @returns {object[]} The shared notes.
+   */
   getNotes() {
     // Only include notes that are present on every selected token (match by text+duration)
     const primaryNotes = TrackingHelper.getNoteFlags(this.tokenDocuments[0]) || [];
@@ -276,6 +342,11 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     return notesArray;
   }
 
+  /**
+   * Changes the selected note type and applies its default duration.
+   *
+   * @param {Event} event The tab click event.
+   */
   _onClickTab(event) {
     const selectedTab = event.srcElement.dataset.tab;
     this.currentTab = selectedTab;
@@ -296,6 +367,12 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     super._onClickTab(event);
   }
 
+  /**
+   * Finds the combatant referenced by an end-of-turn duration.
+   *
+   * @param {string} duration The resolved duration.
+   * @returns {string|undefined} The matching combatant ID.
+   */
   _getCombatantIfEoT(duration) {
     if (duration?.startsWith("EoT ")) {
       const combatantName = duration.replace("EoT ", "");
@@ -304,11 +381,22 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     }
   }
 
+  /**
+   * Stores the selected origin token ID.
+   *
+   * @param {Event} event The origin selector change event.
+   */
   _onOriginChange(event) {
     this.selectedOrigin = event.target.value;
     // No need to re-render since radio buttons are static
   }
 
+  /**
+   * Wires dialog controls after the application has rendered.
+   *
+   * @param {object} context The rendered template context.
+   * @param {object} options Render options.
+   */
   _onRender(context, options) {
     super._onRender(context, options);
 

@@ -1,7 +1,16 @@
 import { Constants, MODULE_ID } from "./constants.js";
 import { TrackingHelper } from "./tracking-helper.js";
 
+/**
+ * Advances and resolves tracked notes during combat.
+ */
 export class CombatManager {
+  /**
+   * Removes all tracked notes and effects when combat is deleted.
+   *
+   * @param {Combat} combat The deleted combat.
+   * @returns {Promise<void>}
+   */
   static async onDeleteCombat(combat, _, __) {
     if (!game.user.isGM) return;
 
@@ -21,6 +30,13 @@ export class CombatManager {
     });
   }
 
+  /**
+   * Removes notes that expired in an earlier round.
+   *
+   * @param {Combat} combat The active combat.
+   * @param {object} roundObject The combat-round update data.
+   * @returns {Promise<void>}
+   */
   static async onCombatRound(combat, roundObject) {
     if (!game.user.isGM) return;
 
@@ -50,6 +66,14 @@ export class CombatManager {
     });
   }
 
+  /**
+   * Resolves end-of-turn and start-of-turn note effects.
+   *
+   * @param {Combat} combat The active combat.
+   * @param {object} previous The previous combat state.
+   * @param {object} current The current combat state.
+   * @returns {Promise<void>}
+   */
   static async onCombatTurnChange(combat, previous, current) {
     if (!game.user.isGM) return;
 
@@ -61,6 +85,12 @@ export class CombatManager {
     CombatManager._resolveOngoingDamage(combat, current);
   }
 
+  /**
+   * Removes notes whose selected combatant has finished a later turn.
+   *
+   * @param {Combat} combat The active combat.
+   * @param {object} previous The previous combat state.
+   */
   static _removeEndOfTurnNotes(combat, previous) {
     const previousRound = previous.round;
     const previousTurn = previous.turn;
@@ -99,6 +129,12 @@ export class CombatManager {
     });
   }
 
+  /**
+   * Rolls saving throws for Save Ends notes on the prior combatant.
+   *
+   * @param {Combat} combat The active combat.
+   * @param {object} previous The previous combat state.
+   */
   static _rollSavingThrows(combat, previous) {
     const previousCombatantId = previous.combatantId;
     const previousCombatant = combat.combatants.find(c => c.id === previousCombatantId);
@@ -137,6 +173,12 @@ export class CombatManager {
     });
   }
 
+  /**
+   * Rolls ongoing damage for the current combatant.
+   *
+   * @param {Combat} combat The active combat.
+   * @param {object} current The current combat state.
+   */
   static _resolveOngoingDamage(combat, current) {
     const currentCombatantId = current.combatantId;
     const currentCombatant = combat.combatants.find(c => c.id === currentCombatantId);
@@ -163,6 +205,12 @@ export class CombatManager {
     });
   }
 
+  /**
+   * Posts a chat message listing notes removed from a token.
+   *
+   * @param {string} tokenName The affected token's name.
+   * @param {object[]} removedNotes The notes that were removed.
+   */
   static _createRemovedNotesMessage(tokenName, removedNotes) {
     const notesList = removedNotes.map(note => `<li>${note.text} (${note.duration})</li>`).join('');
     const content = `
