@@ -36,6 +36,31 @@
   margin-top: 10px;
 }
 
+/*
+ * Foundry V13 renders radio/checkbox inputs with `appearance: none` and draws
+ * the circle/checkmark using an icon-font glyph in a ::before/::after
+ * pseudo-element. Our "Conditions", "Ongoing", "Modifiers", "Resistances" and
+ * "Manual" sections all carry the `.tab` class and start out `display: none`
+ * (only the initial tab is visible - see `.tab[data-tab]:not(.active)` in
+ * Foundry core CSS). The first time such a hidden tab becomes visible, the
+ * browser fails to paint the unchecked-state glyph for these radios, and it
+ * only appears once the input's state changes (e.g. gets checked), which is
+ * why the Damage Type radios in Ongoing/Resistances look invisible until
+ * clicked. The "Duration" section isn't part of the tab group (no `.tab`
+ * class) so it's visible from first paint and doesn't show the issue.
+ * Force native radio rendering here to avoid depending on that glyph paint.
+ */
+#too-much-too-track-dialog input[type="radio"] {
+  appearance: auto;
+  -webkit-appearance: auto;
+  -moz-appearance: auto;
+}
+
+#too-much-too-track-dialog input[type="radio"]::before,
+#too-much-too-track-dialog input[type="radio"]::after {
+  content: unset;
+}
+
 .tmm-notes-table-header {
   padding: 5px;
   border: 1px solid #ccc;

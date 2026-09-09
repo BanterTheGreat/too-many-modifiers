@@ -384,5 +384,109 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         }
       });
     });
+
+    // Add event listeners for ongoing value spinner
+    const increaseOngoingBtn = this.element.querySelector('#increaseOngoing');
+    const decreaseOngoingBtn = this.element.querySelector('#decreaseOngoing');
+    const ongoingDamage = this.element.querySelector('#ongoingDamage');
+
+    if (increaseOngoingBtn && ongoingDamage) {
+      increaseOngoingBtn.addEventListener('click', () => {
+        const currentValue = Number.parseInt(ongoingDamage.value) || 0;
+        ongoingDamage.value = currentValue + 1;
+      });
+    }
+
+    if (decreaseOngoingBtn && ongoingDamage) {
+      decreaseOngoingBtn.addEventListener('click', () => {
+        const currentValue = Number.parseInt(ongoingDamage.value) || 0;
+        ongoingDamage.value = currentValue - 1;
+      });
+    }
+
+    // Add event listeners for ongoing quick ability buttons
+    const quickAbilityOngoingButtons = this.element.querySelectorAll('.quick-ability-ongoing');
+    quickAbilityOngoingButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const ability = button.dataset.ability;
+        const sign = button.dataset.sign;
+        
+        // Get the origin combatant
+        const ongoingOriginSelect = this.element.querySelector('#ongoingOrigin');
+        const originTokenId = ongoingOriginSelect?.value;
+        
+        if (!originTokenId || !this.combat) {
+          ui.notifications.warn("Please select an origin combatant first");
+          return;
+        }
+        
+        const originCombatant = this.combat.combatants.find(c => c.tokenId === originTokenId);
+        if (!originCombatant?.actor) {
+          ui.notifications.error("Selected origin combatant not found");
+          return;
+        }
+        
+        // Get the ability modifier value
+        const abilityValue = originCombatant.actor.system.abilities[ability]?.mod || 0;
+        
+        // Set the value (hardset, not add)
+        const ongoingDamage = this.element.querySelector('#ongoingDamage');
+        if (ongoingDamage) {
+          ongoingDamage.value = sign === '+' ? Math.abs(abilityValue) : -Math.abs(abilityValue);
+        }
+      });
+    });
+
+    // Add event listeners for resistance value spinner
+    const increaseResistanceBtn = this.element.querySelector('#increaseResistance');
+    const decreaseResistanceBtn = this.element.querySelector('#decreaseResistance');
+    const resistanceValue = this.element.querySelector('#resistanceValue');
+
+    if (increaseResistanceBtn && resistanceValue) {
+      increaseResistanceBtn.addEventListener('click', () => {
+        const currentValue = Number.parseInt(resistanceValue.value) || 0;
+        resistanceValue.value = currentValue + 1;
+      });
+    }
+
+    if (decreaseResistanceBtn && resistanceValue) {
+      decreaseResistanceBtn.addEventListener('click', () => {
+        const currentValue = Number.parseInt(resistanceValue.value) || 0;
+        resistanceValue.value = currentValue - 1;
+      });
+    }
+
+    // Add event listeners for resistance quick ability buttons
+    const quickAbilityResistanceButtons = this.element.querySelectorAll('.quick-ability-resistance');
+    quickAbilityResistanceButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const ability = button.dataset.ability;
+        const sign = button.dataset.sign;
+        
+        // Get the origin combatant
+        const resistanceOriginSelect = this.element.querySelector('#resistanceOrigin');
+        const originTokenId = resistanceOriginSelect?.value;
+        
+        if (!originTokenId || !this.combat) {
+          ui.notifications.warn("Please select an origin combatant first");
+          return;
+        }
+        
+        const originCombatant = this.combat.combatants.find(c => c.tokenId === originTokenId);
+        if (!originCombatant?.actor) {
+          ui.notifications.error("Selected origin combatant not found");
+          return;
+        }
+        
+        // Get the ability modifier value
+        const abilityValue = originCombatant.actor.system.abilities[ability]?.mod || 0;
+        
+        // Set the value (hardset, not add)
+        const resistanceValue = this.element.querySelector('#resistanceValue');
+        if (resistanceValue) {
+          resistanceValue.value = sign === '+' ? Math.abs(abilityValue) : -Math.abs(abilityValue);
+        }
+      });
+    });
   }
 }
