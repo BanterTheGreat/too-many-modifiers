@@ -1,4 +1,3 @@
-import { CombatManager } from "./combat-manager.js";
 import { TrackingOverlay } from "./tracking-overlay.js";
 import { TrackingDialog } from "./tracking-dialog.js";
 import { MODULE_ID } from "./constants.js";
@@ -8,9 +7,6 @@ Hooks.on("refreshToken", TrackingOverlay.refreshToken);
 Hooks.on("updateToken", TrackingOverlay.onUpdateToken);
 Hooks.on("updateActor", TrackingOverlay.onUpdateActor);
 
-Hooks.on("combatRound", CombatManager.onCombatRound);
-Hooks.on("combatTurnChange", CombatManager.onCombatTurnChange);
-Hooks.on("deleteCombat", CombatManager.onDeleteCombat);
 
 Hooks.on("renderTokenHUD", (app, html) => {
   if (!game.user.isGM) {
@@ -27,8 +23,6 @@ Hooks.on("renderTokenHUD", (app, html) => {
   button.on("click", (e) => {
     const selected = canvas.tokens.controlled && canvas.tokens.controlled.length ? canvas.tokens.controlled : [];
     if (selected.length === 0) return;
-
-    console.error(selected);
 
     const trackingDialog = new TrackingDialog(selected);
     trackingDialog.render(true);

@@ -1,6 +1,5 @@
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
-import { Constants } from "./constants.js";
 import { MODULE_ID } from "./constants.js";
 import { TrackingHelper } from "./tracking-helper.js";
 
@@ -64,52 +63,27 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     const action = event.submitter.dataset.type;
     const data = formData.object;
     
-    // Resolve duration based on radio button selection
-    let duration = this._resolveDuration(data.duration, data.durationOverride);
-    const combatantId = this._getCombatantIfEoT(duration);
-    const userFriendlyDuration = TrackingHelper.getUserFriendlyDuration(duration, this.combat);
-    var note = null;
-
-    const protoNote = {
-      duration: userFriendlyDuration,
-      id: `tmtt-${foundry.utils.randomID()}`,
-      combatantId: combatantId,
-      round: this.combat?.round,
-      turn: this.combat?.turn,
-      type: this.currentTab,
-    };
+    const effectData = this._getEffectData(data);
 
     const handlers = {
-      conditions: new ConditionNoteHandler(data, protoNote, this.tokenDocuments),
-      ongoing: new OngoingNoteHandler(data, protoNote),
-      modifiers: new ModifierNoteHandler(data, protoNote, this.tokenDocuments, this.combat),
-      resistances: new ResistanceNoteHandler(data, protoNote, this.tokenDocuments),
-      manual: new ManualNoteHandler(data, protoNote),
+      conditions: new ConditionNoteHandler(data, effectData, this.tokenDocuments),
+      ongoing: new OngoingNoteHandler(data, effectData, this.tokenDocuments),
+      modifiers: new ModifierNoteHandler(data, effectData, this.tokenDocuments, this.combat),
+      resistances: new ResistanceNoteHandler(data, effectData, this.tokenDocuments),
+      manual: new ManualNoteHandler(data, effectData, this.tokenDocuments),
     };
+
+    const notesToRemove = data.deleteNote != null ? this.getNotes().filter(note => data.deleteNote.includes(note.id)) : [];
+    for (const tokenDoc of this.tokenDocuments) {
+      await TrackingHelper.deleteNotesAndEffects(tokenDoc, notesToRemove);
+    }
 
     const noteHandler = handlers[this.currentTab];
     if (noteHandler) {
-      note = await noteHandler.create();
+      await noteHandler.create();
     } else {
       ui.notifications.warn(`No handler found for note type "${this.currentTab}". Please ensure the type is correct and a handler exists.`);
       return;
-    }
-
-    for (const tokenDoc of this.tokenDocuments) {
-      // Get existing notes and reset broken ones. Any note without an ID is filtered away.
-      const existingNotes = TrackingHelper.getNoteFlags(tokenDoc);
-      const verifiedNotes = Array.isArray(existingNotes) ? [...existingNotes.filter(note => !!note?.id)] : [];
-
-      // Keep track of removed notes
-      const notesToRemove = data.deleteNote != null ? verifiedNotes.filter((note) => data.deleteNote.includes(note.id)) : [];
-
-      // Nothing was inputted, as such we don't need to add a note.
-      if (note != null && note.duration != null) {
-        verifiedNotes.push(note);
-      }
-
-      await TrackingHelper.setNoteFlags(tokenDoc, verifiedNotes);
-      await TrackingHelper.deleteNotesAndEffects(tokenDoc, notesToRemove);
     }
 
     if (action === "saveAndClose") {
@@ -222,40 +196,61 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Converts a form duration selection into its stored representation.
+   * Builds the native DnD4e Active Effect duration data for this submission.
    *
-   * @param {string} durationType The selected duration type.
-   * @param {string} customValue The custom duration text.
-   * @returns {string} The resolved duration.
+   * @param {object} data The submitted form data.
+   * @returns {object} Active Effect source data shared by every handler.
    */
-  _resolveDuration(durationType, customValue) {
-    if (!durationType) return "";
+  _getEffectData(data) {
+    const durationType = data.duration || "custom";
+    const selectedOrigin = data.origin || data.ongoingOrigin || data.resistanceOrigin || this.selectedOrigin;
+    const originCombatant = this.combat?.combatants.find(combatant => combatant.tokenId === selectedOrigin);
+    const effectData = {
+      flags: {
+        [MODULE_ID]: {
+          tracked: true,
+          durationLabel: data.durationOverride || "Custom",
+        },
+      },
+      system: {
+        durationType: "custom",
+      },
+    };
 
     switch(durationType) {
       case "encounter":
-        return Constants.DURATION_ENCOUNTER;
+        effectData.system.durationType = "endOfEncounter";
+        effectData.flags[MODULE_ID].durationLabel = "Encounter";
+        break;
       case "round":
-        return Constants.DURATION_ROUND;
+        effectData.system.durationType = "";
+        effectData.duration = {
+          value: 1,
+          units: "rounds",
+          expiry: "roundStart",
+        };
+        effectData.flags[MODULE_ID].durationLabel = "Round";
+        break;
       case "save":
-        return Constants.DURATION_SAVE;
+        effectData.system.durationType = "saveEnd";
+        effectData.flags[MODULE_ID].durationLabel = "Save Ends";
+        break;
       case "eot-origin":
-        // Use selected origin if available
-        if (this.selectedOrigin && this.combat) {
-          return `EoT ${this.selectedOrigin}`;
+        if (originCombatant?.actor) {
+          effectData.system.durationType = "endOfUserTurn";
+          effectData.origin = originCombatant.actor.uuid;
+          effectData.flags[MODULE_ID].durationLabel = `EoT ${originCombatant.name}`;
         }
-        return "";
+        break;
       case "eot-target":
-        // Use the first token being edited
-        if (this.tokens && this.tokens.length > 0) {
-          return `EoT ${this.tokens[0].id}`;
-        }
-        return "";
-      case "custom":
-        // Use the custom value from the textfield
-        return customValue || "";
+        effectData.system.durationType = "endOfTargetTurn";
+        effectData.flags[MODULE_ID].durationLabel = "EoT Target";
+        break;
       default:
-        return durationType;
+        break;
     }
+
+    return effectData;
   }
 
   /**
@@ -323,23 +318,18 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns {object[]} The shared notes.
    */
   getNotes() {
-    // Only include notes that are present on every selected token (match by text+duration)
-    const primaryNotes = TrackingHelper.getNoteFlags(this.tokenDocuments[0]) || [];
-    let notesArray = [];
-    if (!Array.isArray(primaryNotes)) {
-      ui.notifications.warn("Non-Array notes data found on primary token. Resetting notes.");
-      notesArray = [];
-    } else {
-      notesArray = primaryNotes.filter(n => {
-        return this.tokenDocuments.every(td => {
-          if (td === this.tokenDocuments[0]) return true;
-          const otherNotes = TrackingHelper.getNoteFlags(td);
-          return Array.isArray(otherNotes) && otherNotes.some(on => on.text === n.text && on.duration === n.duration);
+    const primaryEffects = TrackingHelper.getTrackedEffects(this.tokenDocuments[0]);
+    return primaryEffects
+      .map(effect => ({
+        id: effect.id,
+        text: effect.description,
+        duration: effect.duration.label || effect.system.durationType,
+      }))
+      .filter(note => this.tokenDocuments.every(tokenDoc => {
+        return TrackingHelper.getTrackedEffects(tokenDoc).some(effect => {
+          return effect.description === note.text && (effect.duration.label || effect.system.durationType) === note.duration;
         });
-      });
-    }
-
-    return notesArray;
+      }));
   }
 
   /**
@@ -365,20 +355,6 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     super._onClickTab(event);
-  }
-
-  /**
-   * Finds the combatant referenced by an end-of-turn duration.
-   *
-   * @param {string} duration The resolved duration.
-   * @returns {string|undefined} The matching combatant ID.
-   */
-  _getCombatantIfEoT(duration) {
-    if (duration?.startsWith("EoT ")) {
-      const combatantName = duration.replace("EoT ", "");
-      const combatant = this.combat?.combatants.find(c => c.tokenId === combatantName);
-      return combatant?.id;
-    }
   }
 
   /**

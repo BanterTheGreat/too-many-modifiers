@@ -6,8 +6,6 @@
         <th class="tmm-notes-table-header" style="width: 30px;">Delete</th>
         <th class="tmm-notes-table-header">Text</th>
         <th class="tmm-notes-table-header">Duration</th>
-        <th class="tmm-notes-table-header">Round</th>
-        <th class="tmm-notes-table-header">Turn</th>
       </tr>
     </thead>
     <tbody>
@@ -18,8 +16,6 @@
         </td>
         <td class="tmm-notes-table-entry">{{note.text}}</td>
         <td class="tmm-notes-table-entry">{{note.duration}}</td>
-        <td class="tmm-notes-table-entry">{{#if note.round}}{{note.round}}{{else}}-{{/if}}</td>
-        <td class="tmm-notes-table-entry">{{#if note.turn}}{{note.turn}}{{else}}-{{/if}}</td>
       </tr>
       {{/each}}
     </tbody>

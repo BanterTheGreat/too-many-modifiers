@@ -17,6 +17,7 @@ Foundry VTT v14 module for the DnD4e system that provides a compact actor HUD an
 
 ## Working conventions
 
+- We don't need to make Markdown research documents.
 - Use ES modules, Foundry hooks, and the DnD4e system API; preserve v12 compatibility unless intentionally upgrading it.
 - Use braced, multiline `if` blocks. Document methods with JSDoc, using multiline JSDoc blocks whenever practical.
 - Prefer Foundry APIs (`foundry.utils`, document flags, embedded documents) and keep asynchronous document changes awaited.

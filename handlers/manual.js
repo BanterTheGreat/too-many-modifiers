@@ -1,44 +1,40 @@
-import { NoteHandler } from "./base.js";
+import { TrackingHelper } from "../tracking-helper.js";
 
 /**
- * Creates free-form notes without mechanical side effects.
+ * Creates free-form reminder Active Effects.
  */
-export class ManualNoteHandler extends NoteHandler {
+export class ManualNoteHandler {
   /**
-   * Creates a manual-note handler.
-   *
    * @param {object} data The submitted form data.
-   * @param {object} protoNote Shared data for the new note.
+   * @param {object} effectData Shared Active Effect data.
+   * @param {TokenDocument[]} documents Tokens receiving the effect.
    */
-  constructor(data, protoNote) {
-    super();
+  constructor(data, effectData, documents) {
     this.data = data;
-    this.protoNote = protoNote;
+    this.effectData = effectData;
+    this.documents = documents;
   }
 
   /**
-   * Creates a note from the entered manual condition.
+   * Creates one temporary reminder effect for each selected token.
    *
-   * @returns {Promise<object|undefined>} The created note, if valid.
-   */
-  async create() {
-    if (!this.data.manualCondition) return;
-
-    return foundry.utils.mergeObject(this.protoNote, {
-      text: this.data.manualCondition,
-    });
-  }
-
-  /**
-   * Cleans a manual note; it has no associated effects.
-   *
-   * @param {TokenDocument} token The affected token document.
-   * @param {object} note The note being removed.
    * @returns {Promise<void>}
    */
-  async clean(token, note) {
-    super.clean(token, note);
-    // Has no effects to clean up.
-    return;
+  async create() {
+    if (!this.data.manualCondition) {
+      return;
+    }
+
+    for (const tokenDoc of this.documents) {
+      const description = TrackingHelper.formatEffectDescription(
+        this.data.manualCondition,
+        this.effectData.flags["too-many-modifiers"].durationLabel,
+      );
+      await tokenDoc.actor.createEmbeddedDocuments("ActiveEffect", [{
+        ...this.effectData,
+        name: description,
+        description,
+      }]);
+    }
   }
 }

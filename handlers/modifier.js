@@ -1,29 +1,28 @@
-import { NoteHandler } from "./base.js";
+import { TrackingHelper } from "../tracking-helper.js";
 
 /**
  * Creates and removes Active Effects for numeric modifiers.
  */
-export class ModifierNoteHandler extends NoteHandler {
+export class ModifierNoteHandler {
   /**
    * Creates a modifier-note handler.
    *
    * @param {object} data The submitted form data.
-   * @param {object} protoNote Shared data for the new note.
+   * @param {object} effectData Shared Active Effect data.
    * @param {TokenDocument[]} documents Tokens receiving the effects.
    * @param {Combat} combat The active combat, if any.
    */
-  constructor(data, protoNote, documents, combat) {
-    super();
+  constructor(data, effectData, documents, combat) {
     this.data = data;
-    this.protoNote = protoNote;
+    this.effectData = effectData;
     this.documents = documents;
     this.combat = combat;
   }
 
   /**
-   * Creates modifier Active Effects and returns their tracking note.
+   * Creates modifier Active Effects.
    *
-   * @returns {Promise<object|undefined>} The created note, if valid.
+   * @returns {Promise<void>}
    */
   async create() {
     if (!this.data.modifierType || !this.data.numberValue) return;
@@ -53,38 +52,18 @@ export class ModifierNoteHandler extends NoteHandler {
 
     // Create the effects.
     for (const tokenDoc of this.documents) {
+      const description = TrackingHelper.formatEffectDescription(
+        `${modifierValue > 0 ? '+' : ''}${modifierValue} ${this.data.modifierType} (${this.data.modifierBonusType})`,
+        this.effectData.flags["too-many-modifiers"].durationLabel,
+      );
       await tokenDoc.actor.createEmbeddedDocuments("ActiveEffect", [{
-        name: this.protoNote.id,
+        ...this.effectData,
+        name: description,
+        description,
         changes: changes,
-        // DnD4e 0.9.3 reads this directly during ActiveEffect._preCreate.
-        system: {
-          durationType: "custom",
-        },
+        system: { ...this.effectData.system },
       }]);
     }
-
-    const noteText = `${modifierValue > 0 ? '+' : ''}${modifierValue} ${this.data.modifierType} (${this.data.modifierBonusType})`;
-    return foundry.utils.mergeObject(this.protoNote, {
-      text: noteText,
-    });
-  }
-
-  /**
-   * Removes the Active Effect associated with a modifier note.
-   *
-   * @param {TokenDocument} token The affected token document.
-   * @param {object} note The note being removed.
-   * @returns {Promise<void>}
-   */
-  async clean(token, note) {
-    if (!token?.actor) return;
-
-    const effect = token.actor.effects.find(e => e.name === note.id);
-    if (effect) {
-      await effect.delete();
-    }
-
-    super.clean(token, note);
   }
 
   /**

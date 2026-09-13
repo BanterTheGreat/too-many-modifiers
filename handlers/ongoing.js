@@ -1,46 +1,47 @@
-import { NoteHandler } from "./base.js";
+import { TrackingHelper } from "../tracking-helper.js";
 
 /**
- * Creates ongoing-damage notes without Active Effects.
+ * Creates native DnD4e ongoing-damage Active Effects.
  */
-export class OngoingNoteHandler extends NoteHandler {
+export class OngoingNoteHandler {
   /**
-   * Creates an ongoing-damage handler.
-   *
    * @param {object} data The submitted form data.
-   * @param {object} protoNote Shared data for the new note.
+   * @param {object} effectData Shared Active Effect data.
+   * @param {TokenDocument[]} documents Tokens receiving the effect.
    */
-  constructor(data, protoNote) {
-    super();
+  constructor(data, effectData, documents) {
     this.data = data;
-    this.protoNote = protoNote;
+    this.effectData = effectData;
+    this.documents = documents;
   }
 
   /**
-   * Creates a note describing ongoing damage.
+   * Creates one native ongoing-damage effect for each selected token.
    *
-   * @returns {Promise<object|undefined>} The created note, if valid.
-   */
-  async create() {
-    if (!this.data.ongoingType || !this.data.ongoingDamage) return;
-
-    return foundry.utils.mergeObject(this.protoNote, {
-      ongoingType: this.data.ongoingType,
-      ongoingDamage: this.data.ongoingDamage,
-      text: `Ongoing ${this.data.ongoingDamage} ${this.data.ongoingType}`,
-    });
-  }
-
-  /**
-   * Cleans an ongoing-damage note; it has no associated effects.
-   *
-   * @param {TokenDocument} token The affected token document.
-   * @param {object} note The note being removed.
    * @returns {Promise<void>}
    */
-  async clean(token, note) {
-    super.clean(token, note);
-    // Has no effects to clean up.
-    return;
+  async create() {
+    if (!this.data.ongoingType || !this.data.ongoingDamage) {
+      return;
+    }
+
+    const description = TrackingHelper.formatEffectDescription(
+      `Ongoing ${this.data.ongoingDamage} ${this.data.ongoingType}`,
+      this.effectData.flags["too-many-modifiers"].durationLabel,
+    );
+    for (const tokenDoc of this.documents) {
+      await tokenDoc.actor.createEmbeddedDocuments("ActiveEffect", [{
+        ...this.effectData,
+        name: description,
+        description,
+        system: {
+          ...this.effectData.system,
+          dots: [{
+            amount: String(this.data.ongoingDamage),
+            types: new Set([this.data.ongoingType]),
+          }],
+        },
+      }]);
+    }
   }
 }

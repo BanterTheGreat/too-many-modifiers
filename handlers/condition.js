@@ -1,27 +1,26 @@
-import { NoteHandler } from "./base.js";
+import { TrackingHelper } from "../tracking-helper.js";
 
 /**
  * Creates and removes status-condition Active Effects.
  */
-export class ConditionNoteHandler extends NoteHandler {
+export class ConditionNoteHandler {
   /**
    * Creates a condition-note handler.
    *
    * @param {object} data The submitted form data.
-   * @param {object} protoNote Shared data for the new note.
+   * @param {object} effectData Shared Active Effect data.
    * @param {TokenDocument[]} tokenDocuments Tokens receiving the effects.
    */
-  constructor(data, protoNote, tokenDocuments) {
-    super();
+  constructor(data, effectData, tokenDocuments) {
     this.data = data;
-    this.protoNote = protoNote;
+    this.effectData = effectData;
     this.tokenDocuments = tokenDocuments;
   }
 
   /**
-   * Creates status effects for the selected conditions and returns their note.
+   * Creates status effects for the selected conditions.
    *
-   * @returns {Promise<object|undefined>} The created note, if valid.
+   * @returns {Promise<void>}
    */
   async create() {
     if (!this.data.condition) return;
@@ -29,57 +28,47 @@ export class ConditionNoteHandler extends NoteHandler {
     const conditionEffect = CONFIG.statusEffects.find(statusEffect => statusEffect.name === this.data.condition);
     if (conditionEffect) {
       for (const tokenDoc of this.tokenDocuments) {
-        await tokenDoc.actor.createEmbeddedDocuments("ActiveEffect", [{
-          icon: conditionEffect.img,
-          name: conditionEffect.name,
-          description: this.protoNote.id,
-          statuses: new Set([conditionEffect.id]),
-          // DnD4e 0.9.3 reads this directly during ActiveEffect._preCreate.
-          system: {
-            durationType: "custom",
-          },
-        }]);
+        await this._createConditionEffect(tokenDoc, conditionEffect);
 
         const conditionEffect2 = CONFIG.statusEffects.find(statusEffect => statusEffect.name === this.data.condition2);
 
         if (conditionEffect2) {
-          await tokenDoc.actor.createEmbeddedDocuments("ActiveEffect", [{
-            icon: conditionEffect2.img,
-            name: conditionEffect2.name,
-            description: this.protoNote.id,
-            statuses: new Set([conditionEffect2.id]),
-            // DnD4e 0.9.3 reads this directly during ActiveEffect._preCreate.
-            system: {
-              durationType: "custom",
-            },
-          }]);
+          await this._createConditionEffect(tokenDoc, conditionEffect2);
         }
       }
     } else {
       ui.notifications.warn(`Condition "${this.data.condition}" not found in CONFIG.statusEffects. Please ensure the condition exists and has a name property.`);
     }
 
-    return foundry.utils.mergeObject(this.protoNote, {
-      text: this.data.condition + (this.data.condition2 ? ` & ${this.data.condition2}` : ''),
-    });
   }
 
   /**
-   * Removes Active Effects associated with a condition note.
+   * Creates an effect containing the configured status's mechanics and metadata.
    *
-   * @param {TokenDocument} token The affected token document.
-   * @param {object} note The note being removed.
+   * @param {TokenDocument} tokenDoc The token receiving the condition.
+   * @param {object} statusEffect The configured DnD4e status effect.
    * @returns {Promise<void>}
    */
-  async clean(token, note) {
-    if (!token?.actor) return;
-    const effects = token.actor.effects.filter(e => e.description === note.id);
-    if (effects.length > 0) {
-      for (const effect of effects) {
-        await effect.delete();
-      }
-    }
+  async _createConditionEffect(tokenDoc, statusEffect) {
+    const name = game.i18n.localize(statusEffect.name);
+    const description = TrackingHelper.formatEffectDescription(
+      name,
+      this.effectData.flags["too-many-modifiers"].durationLabel,
+    );
+    const conditionLabFlags = statusEffect.flags?.["condition-lab-triggler"];
 
-    super.clean(token, note);
+    await tokenDoc.actor.createEmbeddedDocuments("ActiveEffect", [{
+      ...this.effectData,
+      name,
+      img: statusEffect.img,
+      description,
+      changes: foundry.utils.deepClone(statusEffect.changes || []),
+      statuses: new Set([statusEffect.id]),
+      system: { ...this.effectData.system },
+      flags: {
+        ...(conditionLabFlags ? { "condition-lab-triggler": foundry.utils.deepClone(conditionLabFlags) } : {}),
+        ...this.effectData.flags,
+      },
+    }]);
   }
 }
