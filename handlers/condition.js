@@ -34,14 +34,10 @@ export class ConditionNoteHandler extends NoteHandler {
           name: conditionEffect.name,
           description: this.protoNote.id,
           statuses: new Set([conditionEffect.id]),
-          flags: {
-            dnd4e: {
-              effectData: {
-                // Necessary to prevent a null reference in the dnd4e system.
-                durationType: "custom",
-              }
-            }
-          }
+          // DnD4e 0.9.3 reads this directly during ActiveEffect._preCreate.
+          system: {
+            durationType: "custom",
+          },
         }]);
 
         const conditionEffect2 = CONFIG.statusEffects.find(statusEffect => statusEffect.name === this.data.condition2);
@@ -52,14 +48,10 @@ export class ConditionNoteHandler extends NoteHandler {
             name: conditionEffect2.name,
             description: this.protoNote.id,
             statuses: new Set([conditionEffect2.id]),
-            flags: {
-              dnd4e: {
-                effectData: {
-                  // Necessary to prevent a null reference in the dnd4e system.
-                  durationType: "custom",
-                }
-              }
-            }
+            // DnD4e 0.9.3 reads this directly during ActiveEffect._preCreate.
+            system: {
+              durationType: "custom",
+            },
           }]);
         }
       }

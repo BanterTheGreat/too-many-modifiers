@@ -39,14 +39,10 @@ export class ResistanceNoteHandler extends NoteHandler {
             value: this.data.resistanceValue,
           }
         ],
-        flags: {
-          dnd4e: {
-            effectData: {
-              // Necessary to prevent a null reference in the dnd4e system.
-              durationType: "custom",
-            }
-          }
-        }
+        // DnD4e 0.9.3 reads this directly during ActiveEffect._preCreate.
+        system: {
+          durationType: "custom",
+        },
       }]);
     }
 

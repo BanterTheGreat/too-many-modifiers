@@ -56,14 +56,10 @@ export class ModifierNoteHandler extends NoteHandler {
       await tokenDoc.actor.createEmbeddedDocuments("ActiveEffect", [{
         name: this.protoNote.id,
         changes: changes,
-        flags: {
-          dnd4e: {
-            effectData: {
-              // Necessary to prevent a null reference in the dnd4e system.
-              durationType: "custom",
-            }
-          }
-        }
+        // DnD4e 0.9.3 reads this directly during ActiveEffect._preCreate.
+        system: {
+          durationType: "custom",
+        },
       }]);
     }
 
