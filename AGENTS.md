@@ -26,3 +26,6 @@ Foundry VTT v14 module for the DnD4e system that provides a compact actor HUD an
 - Changes that affect initial hooks or the manifest should be tested by reloading Foundry and checking the browser console. There is no automated test or build setup.
 - Changelog entries are release summaries, not per-change notes. Since the previous version, record new features and changed behavior in concise prose suitable for future regression review.
 - Track project TODOs as appropriately labeled GitHub Issues rather than local TODO files.
+
+## Active Effects
+- Go to Active_Effects_Info.md for information regarding the Active Effects in DND4e system.

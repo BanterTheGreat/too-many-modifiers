@@ -322,12 +322,13 @@ export class TrackingDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     return primaryEffects
       .map(effect => ({
         id: effect.id,
-        text: effect.description,
+        text: TrackingHelper.stripHtml(effect.description),
         duration: effect.duration.label || effect.system.durationType,
       }))
       .filter(note => this.tokenDocuments.every(tokenDoc => {
         return TrackingHelper.getTrackedEffects(tokenDoc).some(effect => {
-          return effect.description === note.text && (effect.duration.label || effect.system.durationType) === note.duration;
+          return TrackingHelper.stripHtml(effect.description) === note.text
+            && (effect.duration.label || effect.system.durationType) === note.duration;
         });
       }));
   }

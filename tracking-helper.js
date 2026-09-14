@@ -12,7 +12,7 @@ export class TrackingHelper {
    * @returns {string} The description displayed in the token overlay.
    */
   static formatEffectDescription(text, duration) {
-    return duration ? `${text} ◆ ${duration}` : text;
+    return duration ? `${text} \u25c6 ${duration}` : text;
   }
 
   /**
@@ -28,7 +28,9 @@ export class TrackingHelper {
     }
 
     const effects = TrackingHelper.getTrackedEffects(token).filter(effect => {
-      return notes.some(note => note.text === effect.description && note.duration === effect.duration.label);
+      return notes.some(note => {
+        return note.text === TrackingHelper.stripHtml(effect.description) && note.duration === effect.duration.label;
+      });
     });
     if (effects.length > 0) {
       await token.actor.deleteEmbeddedDocuments("ActiveEffect", effects.map(effect => effect.id));
@@ -48,8 +50,57 @@ export class TrackingHelper {
 
     return token.actor.effects
       .filter(effect => effect.isTemporary && effect.description)
-      .map(effect => effect.description)
+      .map(effect => TrackingHelper.formatEffectForDisplay(effect))
+      .filter(Boolean)
       .join("\n");
+  }
+
+  /**
+   * Formats an Active Effect description and its current duration for the token overlay.
+   *
+   * @param {ActiveEffect} effect The Active Effect to format.
+   * @returns {string} The plain-text description with its duration, when available.
+   */
+  static formatEffectForDisplay(effect) {
+    const durationLabel = effect.getFlag(MODULE_ID, "durationLabel");
+    const separator = " \u25c6 ";
+    let description = TrackingHelper.stripHtml(effect.description);
+
+    if (durationLabel && description.endsWith(`${separator}${durationLabel}`)) {
+      description = description.slice(0, -(`${separator}${durationLabel}`).length);
+    }
+
+    return TrackingHelper.formatEffectDescription(description, TrackingHelper.getDurationLabel(effect));
+  }
+
+  /**
+   * Gets the DnD4e label for an Active Effect's configured duration.
+   *
+   * @param {ActiveEffect} effect The Active Effect to inspect.
+   * @returns {string|undefined} The human-readable duration label, when available.
+   */
+  static getDurationLabel(effect) {
+    const durationType = effect.system?.durationType;
+    const durationLabel = effect.duration?.label || CONFIG.DND4E?.durationType?.[durationType]?.label;
+
+    if (durationType !== "endOfUserTurn" || !effect.origin || !durationLabel) {
+      return durationLabel;
+    }
+
+    const user = fromUuidSync(effect.origin);
+    return user?.name ? `EonT ${user.name}` : durationLabel;
+  }
+
+  /**
+   * Removes HTML markup from an Active Effect description before it is rendered as a note.
+   *
+   * @param {string} description The Active Effect description.
+   * @returns {string} The plain-text description.
+   */
+  static stripHtml(description) {
+    const container = document.createElement("div");
+    container.innerHTML = description || "";
+    return container.textContent?.trim() || "";
   }
 
   /**
