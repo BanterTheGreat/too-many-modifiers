@@ -1,3 +1,8 @@
+---
+name: dnd4e-active-effect-keys
+description: Answer or implement DnD4e 0.9.3 Active Effect modifiers, including actor keys, conditional roll keys, resistance paths, change modes, formulas, and roll-data variables. Use when configuring an effect's Changes tab or diagnosing a modifier that does not apply.
+---
+
 # Active Effect keys and DnD4e variables
 
 Reference for DnD4e [`0.9.3`](https://github.com/EndlesNights/dnd4eBeta/tree/0.9.3). Keys and variables are case-sensitive.
@@ -17,7 +22,7 @@ These change a stored actor property.
 | Global damage modifier | `system.modifiers.damage.<bonus-type>` |
 | Saving throws | `system.details.saves.<bonus-type>` |
 
-`<bonus-type>` is normally `power`, `item`, `race`, or `untyped`. Use **Upgrade** for typed bonuses so only the highest bonus of that type is retained. Use **Add** for untyped bonuses and penalties.
+Valid general bonus types are `feat`, `race`, `item`, `class`, `power`, `enhance`, and `untyped`. Defences also accept `armour` and `shield`. Use **Upgrade** for typed bonuses so only the highest bonus of that type is retained. Use **Add** for untyped bonuses and penalties.
 
 Examples:
 
@@ -27,6 +32,36 @@ system.defences.fort.item
 system.movement.base.untyped
 system.modifiers.attack.power
 ```
+
+Other useful standard actor keys include:
+
+| What it changes | Key |
+| --- | --- |
+| Starting hit points | `system.attributes.hp.starting` |
+| Hit points per level | `system.attributes.hp.perlevel` |
+| Bonus hit points | `system.attributes.hp.<bonus-type>` |
+| Healing surges | `system.details.surges.<bonus-type>` |
+| Healing surge value | `system.details.surgeBon.<bonus-type>` |
+| Second Wind healing | `system.details.secondwindbon.<bonus-type>` |
+| Death saves | `system.details.deathsavebon.<bonus-type>` |
+| Walk, run, charge, or climb speed | `system.movement.<walk|run|charge|climb>.<bonus-type>` |
+| A specific skill | `system.skills.<skill-key>.<bonus-type>` |
+| Initiative | `system.attributes.init.<bonus-type>` |
+| Global skill checks | `system.modifiers.skills.<bonus-type>` |
+| Global defences | `system.modifiers.defences.<bonus-type>` |
+| Marker actor UUID | `system.marker` |
+
+For most typed actor values, `<bonus-type>` may instead be:
+
+- `floor` to impose a minimum final value.
+- `ceil` to impose a maximum final value. A ceiling wins if it conflicts with a floor.
+- `absolute` to replace the final value after other modifiers.
+
+Resistance and vulnerability do not support `floor` or `ceil`, but `system.resistances.<damage-type>.absolute` sets an absolute resistance (positive) or vulnerability (negative).
+
+### Standard change modes and priority
+
+Standard actor changes obey Foundry's change mode. Their default priorities are Custom 0, Multiply 10, Add 20, Downgrade 30, Upgrade 40, and Override 50. Higher priority runs later. Set an explicit priority when order matters; for example, reducing resistance after Upgrade effects requires a priority above 40. DnD4e 0.9.3 does not implement useful behavior for Custom mode.
 
 ## Resistance and vulnerability keys
 
@@ -41,6 +76,8 @@ Valid `<damage-type>` values:
 damage  ongoing  acid  cold  fire  force  lightning
 necrotic  physical  poison  psychic  radiant  thunder
 ```
+
+`damage` means all damage; `all` is not a valid resistance key.
 
 Examples:
 
@@ -69,12 +106,13 @@ Their change mode is ignored; DnD4e applies them as bonuses and handles 4e stack
 | `power` | Match properties of the power being used. Also use this for a creature's defence against a matching incoming power. |
 | `weapon` | Match properties of the weapon or implement being used. |
 | `effect` | Match properties of an effect, normally for saves or save DCs. |
-| `grants` | Match an attack made **against** this creature and modify the attacker's roll for that attack. |
+| `grants` | Match an attack made **against** this creature and modify the attacker's roll for that attack. In DnD4e 0.9.3 this scope works only with `attack`. |
 
 The important distinction:
 
 - `power.defence...` changes this creature's defence against a matching incoming power.
 - `grants.attack...` changes the attacker's roll when the attacker targets this creature. Use a negative value when the creature imposes an attack penalty.
+- `grants.damage...` fits the generic key shape but is not consumed by DnD4e 0.9.3 damage rolls. Damage rolls process the attacker's effects and do not process effects on targeted creatures.
 
 ### Targets
 
@@ -93,6 +131,22 @@ global  opp  melee  ranged  weapon  usesImplement
 vsAc  vsFort  vsRef  vsWil  fire  cold  radiant
 ```
 
+Useful power filters include:
+
+```text
+meleeWeapon  rangedWeapon  usesImplement  weapon
+area  areaBlast  areaBurst  blast  burst  close
+closeBlast  closeBurst  melee  ranged
+basic  mBasic  rBasic  charge  opp
+usesStr  usesDex  usesCon  usesInt  usesWis  usesCha
+```
+
+Useful weapon filters include weapon groups such as `axe`, `bow`, `cbow`, `flail`, `ham`, `bladeH`, `bladeL`, `mace`, `pole`, `spear`, `staff`, and `unarm`; implement types such as `holyS`, `ki`, `orb`, `rod`, `tome`, `totem`, and `wand`; and properties such as `off`, `rch`, `thv`, `tlg`, `two`, and `ver`. Other filters include `imp`, `one`, `proficient`, `self`, and an item's exact identifier.
+
+Power source and keyword filters use internal case-sensitive keys such as `arcane`, `divine`, `martial`, `primal`, `psionic`, `shadow`, `charm`, `fear`, `healing`, `stance`, and `zone`. A power's exact identifier is also a filter.
+
+Power-scoped filters inspect the power first. They inherit equipped weapon properties only where the power configuration inherits them, particularly melee-or-ranged-weapon powers. `usesImplement` means the power requires an implement; `imp` means the equipped tool is an implement.
+
 | Effect | Key and value |
 | --- | --- |
 | +2 AC against opportunity attacks | `power.defence.opp.vsAc.untyped = 2` |
@@ -103,6 +157,14 @@ vsAc  vsFort  vsRef  vsWil  fire  cold  radiant
 | +2 damage with melee weapon powers | `power.damage.meleeWeapon.untyped = 2` |
 | +2 to saves against enchantment effects | `effect.save.enchantment.untyped = 2` |
 | Extra fire damage | `power.damage.fire.roll = 1d6[fire]` |
+
+Prefer standard actor keys such as `system.modifiers.attack.<bonus-type>` or `system.modifiers.damage.<bonus-type>` for unconditional flat attack or damage bonuses. Use the `global` filter when the condition is genuinely scope-wide, especially for `grants`, or when using the special `roll` type.
+
+All penalties should normally be `untyped`, because typed modifiers keep only the highest value and can discard a penalty in favor of a non-negative modifier. The special `roll` bonus type works only with `damage` and adds a separate Foundry damage expression such as `1d6[fire]` or `1d6[fire,radiant]`; keep formulas simple.
+
+### Diagnosing conditional modifiers
+
+An applied custom modifier appears in the roll formula as `@<BonusType>EffectBonus`, such as `@PowerEffectBonus`. If that term is absent, the effect did not match or the roll workflow did not process its scope. Enable DnD4e's effect-bonus debug setting to log the candidate effects and matching filters for attack and damage rolls.
 
 ### AC capitalization warning
 
@@ -116,7 +178,7 @@ power.defence.vsAc.untyped
 
 ## Variables in effect values
 
-Active Effect values use actor roll data. With **Use Source Actor Data** enabled, a transferred effect resolves variables from its source actor when applied. Otherwise, values are evaluated from the affected actor where the roll permits it.
+Active Effect values use actor roll data. In DnD4e 0.9.3, **Use Source Actor Data** is enabled by default and resolves variables from the source actor when the effect is created. Disable it when the value must use the affected actor's data or remain dynamic, such as `@bloodied` changing while the effect persists.
 
 ### Actor aliases
 

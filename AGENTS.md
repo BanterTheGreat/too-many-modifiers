@@ -28,4 +28,7 @@ Foundry VTT v14 module for the DnD4e system that provides a compact actor HUD an
 - Track project TODOs as appropriately labeled GitHub Issues rather than local TODO files.
 
 ## Active Effects
-- Go to Active_Effects_Info.md for information regarding the Active Effects in DND4e system.
+
+- Use the `dnd4e-active-effect-keys` skill for Active Effect change keys, modes, filters, formulas, and roll-data variables.
+- Use the `dnd4e-effect-macros` skill for macros embedded through the Effect Macro module, including triggers and injected helpers.
+- Use the `dnd4e-aura-effects` skill for Aura Effects configuration, source/recipient evaluation, stacking, and conditional scripts.
